@@ -1,0 +1,1041 @@
+#!/bin/bash
+#
+# This script uses iptables and ipset to gather ECN related data for a subnet:
+# - for each subnet IP address, all protocols:
+#   - ECT(0) marks
+#   - ECT(1) marks
+#   - CE marks
+# - for each subnet IP address, TCP:
+#   - all SYNs
+#   - ECN SYNs
+#   - ECN SYN/ACKs
+#   - ECT(0) marks for ECN flow
+#   - ECT(1) marks for ECN flow
+#   - CE marks for ECN flow
+# - for each subnet IP address and dst port for non-TCP conntrack supported
+#   protos (per nf_conntrack_tuple.h: UDP, ICMP, DCCP, SCTP, GRE):
+#   - ECT(0) marks
+#   - ECT(1) marks
+#   - CE marks
+# - for whole subnet:
+#   - all IP packets/bytes
+#
+# Changes
+# -------
+# - 2020.12.04: fix extra ECE marks on ACK or SYN/ACK retransmits
+# - 2020.12.07: add ecn_from-(wan|lan) to improve performance
+# - 2020.12.07: dynamically add IP addresses to save memory
+# - 2020.12.15: add ecn_ip-(ce|ect1)-from-(lan|wan)-(src|dst)-port ipsets
+#               to gather ip pairs and WAN ports from ECN marked IP traffic
+# - 2020.12.28: count ECT(0) for TCP, non-TCP conntrack flows and IP
+# - 2020.12.28: change to ecn_(in|out)-ip-(ect0|ce|ect)-from-(lan|wan) ipsets
+#               to gather lan ip and dst ports from ECN marked IP traffic
+#
+# Terminology
+# -----------
+#
+# - LAN: the network specified to the install command and used for per-IP data
+# - WAN: the network opposite the router from the LAN (usually the Internet)
+# - out: a connection initiated from the LAN to the WAN
+# - in: a connection initiated from the WAN to the LAN
+# - from-lan: a packet or counter from the LAN to the WAN
+# - from-wan: a packet or counter from the WAN to the LAN
+# - src: the source address in the packet
+# - dst: the destination address in the packet
+# - ORIGINAL: packet in original direction as per conntrack's --ctdir
+# - REPLY: packet in reply direction as per conntrack's --ctdir
+# - ct: non-TCP conntrack supported flows (UDP, ICMP, DCCP, SCTP, GRE)
+#
+# Chain Logic:
+# ------------
+# - ecn_main:
+#   - if incoming IP goto ecn_in (also counts IP)
+#   - if outgoing IP goto ecn_out (also counts IP)
+# - ecn_from-(lan|wan):
+#   - if CE jump to ecn_ce_from-(lan|wan)
+#   - if ECT(1) jump to ecn_ect1_from-(lan|wan)
+#   - if ECT(0) jump to ecn_ect0_from-(lan|wan)
+#   - return if not TCP
+#   - return if not SYN flag set (SYN | SYN/ACK) and connmark not set
+#   - if connmark_tcp_out goto ecn_$orig_from-$from
+#   - if connmark_tcp_in goto ecn_$orig_from-$from
+#   - if syn goto ecn_$orig_syn
+# - ecn_(ect0|ce|ect1)_from-(lan|wan):
+#   - match lan IP address
+#   - if ctdir (ORIGINAL|REPLY) match lan IP address and (src|dst) port
+# - ecn_(out|in)_from-(lan|wan):
+#   - count ECE
+#   - return if ECT(0)
+#   - count CE
+#   - count ECT(1)
+# - ecn_(out|in)_syn:
+#   - count syn
+#   - count ecn syn
+#   - if syn-ack goto ecn_$orig_syn_ack
+# - ecn_(out|in)_syn_ack:
+#   - count syn-ack
+#   - set connmark_tcp
+#
+# System Resources
+# ----------------
+#
+# CPU requirements are minimal as ipsets are used.
+#
+# Memory increases as entries are added to the ipsets. It's possible to use
+# subnets of any size, and since most statistics are for ECN flows only, memory
+# requirements should be reasonable even for larger networks. However, you may
+# need to edit IPSET_HASH_IP_* to change hashsize or maxelem for larger
+# networks (see man ipset(8)). Using the default settings, a base amount of 54M
+# is required.
+#
+
+# program name
+PROGNAME="iptables-ecn"
+
+# connmarks used for ECN capable flows
+CONNMARK_MASK=0x03    # 0000 0011
+CONNMARK_TCP_OUT=0x07 # 0000 0111, set on receipt of ECN SYN/ACK from WAN
+CONNMARK_TCP_IN=0x0b  # 0000 1011, set on receipt of ECN SYN/ACK from LAN
+
+# connlabels used for ECN capable TCP flows (set on receipt of ECN SYN/ACK)
+#CONNLABEL=71
+#CONNLABEL_OUT=72
+#CONNLABEL_IN=73
+
+# table and chain to add jump to
+TABLE="mangle"
+JUMP_CHAIN="POSTROUTING"
+
+# chains used
+CHAINS=( \
+	ecn_main \
+	ecn_from-lan \
+	ecn_from-wan \
+	ecn_ce-from-lan \
+	ecn_ect1-from-lan \
+	ecn_ect0-from-lan \
+	ecn_ce-from-wan \
+	ecn_ect1-from-wan \
+	ecn_ect0-from-wan \
+	ecn_in_syn \
+	ecn_in_synack \
+	ecn_in_from-lan \
+	ecn_in_from-wan \
+	ecn_out_syn \
+	ecn_out_synack \
+	ecn_out_from-lan \
+	ecn_out_from-wan \
+	)
+
+# arguments for hash:ip ipsets
+IPSET_HASH_IP_ARGS="hashsize 65536 maxelem 262144 counters"
+IPSET_HASH_IP_PORT_ARGS="hashsize 131072 maxelem 1048576 counters"
+
+# arguments for the creation of ipsets
+IPSET_ARGS=( \
+	"ecn_ip-ect0-from-lan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_ip-ect0-from-wan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_ip-ce-from-lan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_ip-ce-from-wan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_ip-ect1-from-lan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_ip-ect1-from-wan hash:ip $IPSET_HASH_IP_ARGS" \
+
+	"ecn_in_ct-ect0-from-wan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+	"ecn_out_ct-ect0-from-wan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+	"ecn_in_ct-ect0-from-lan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+	"ecn_out_ct-ect0-from-lan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+
+	"ecn_in_ct-ce-from-wan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+	"ecn_out_ct-ce-from-wan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+	"ecn_in_ct-ce-from-lan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+	"ecn_out_ct-ce-from-lan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+
+	"ecn_in_ct-ect1-from-wan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+	"ecn_out_ct-ect1-from-wan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+	"ecn_in_ct-ect1-from-lan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+	"ecn_out_ct-ect1-from-lan hash:ip,port $IPSET_HASH_IP_PORT_ARGS" \
+
+	"ecn_in_all-syn hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_out_all-syn hash:ip $IPSET_HASH_IP_ARGS" \
+
+	"ecn_in_ecn-syn hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_out_ecn-syn hash:ip $IPSET_HASH_IP_ARGS" \
+
+	"ecn_in_ecn-synack hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_out_ecn-synack hash:ip $IPSET_HASH_IP_ARGS" \
+
+	"ecn_in_ect0-from-lan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_out_ect0-from-lan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_in_ect0-from-wan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_out_ect0-from-wan hash:ip $IPSET_HASH_IP_ARGS" \
+
+	"ecn_in_ce-from-lan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_out_ce-from-lan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_in_ce-from-wan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_out_ce-from-wan hash:ip $IPSET_HASH_IP_ARGS" \
+
+	"ecn_in_ece-from-lan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_out_ece-from-lan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_in_ece-from-wan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_out_ece-from-wan hash:ip $IPSET_HASH_IP_ARGS" \
+
+	"ecn_in_ect1-from-lan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_out_ect1-from-lan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_in_ect1-from-wan hash:ip $IPSET_HASH_IP_ARGS" \
+	"ecn_out_ect1-from-wan hash:ip $IPSET_HASH_IP_ARGS" \
+	)
+
+# ipsets used (first arg from each of the arg strings)
+IPSETS=()
+for s in "${IPSET_ARGS[@]}"; do
+	IPSETS+=("${s%% *}")
+done
+
+#############################################################################
+#
+# UTILITY FUNCTIONS
+#
+#
+
+# emit_usage prints the usage
+emit_usage() {
+	cat << EndOfUsage
+$PROGNAME uses iptables to gather ECN related statistics.
+
+Usage: $PROGNAME [-h|--help] <command> [<args>]
+
+Commands:
+
+    install:
+        creates required iptables chains and ipsets
+
+        -s|--subnet <netmask> (required)
+            include traffic to and from the specified subnet
+            be careful with memory required for subnets larger than /14
+
+        --start
+            starts counting immediately after install
+
+    start:
+        starts counting (adds jump in $TABLE $JUMP_CHAIN to ecn_main chain)
+
+    list:
+        lists chains and ipsets
+
+        -v|--verbose
+            also list ipset entries
+
+        -s|--sorted
+            sort ipset entries when listing them (may be slow)
+
+    save:
+        saves a .tar.gz archive of results to current directory
+
+    stop:
+        stops counting (removes jump to ecn_main chain from $TABLE $JUMP_CHAIN)
+
+    uninstall:
+        completely removes all chains and ipsets (data is lost)
+
+Examples:
+
+    create chain for subnet 192.168.0.0/16:
+        $PROGNAME install -s 192.168.0.0/16
+
+    start gathering data (use after install command):
+        $PROGNAME start
+
+    list chains and ipsets, with sorted values:
+        $PROGNAME list -v -s
+
+    stop gathering data, but leave counters intact:
+        $PROGNAME stop
+
+    completely remove counters from system:
+        $PROGNAME uninstall
+EndOfUsage
+}
+
+# msg emits a log message
+msg() {
+	echo "$PROGNAME: $@"
+}
+
+# emits an error and exits
+fail() {
+	>&2 echo "ERROR: $@"
+	exit 1
+}
+
+# emits an error and the usage, and exits
+fail_usage() {
+	>&2 echo "ERROR: $@"
+	>&2 emit_usage
+	exit 1
+}
+
+# ensure_root fails the program if the user is not root
+ensure_root() {
+	[ "$EUID" -ne 0 ] && fail "must be root to run this command"
+}
+
+#############################################################################
+#
+# INSTALL/UNINSTALL COMMANDS
+#
+#
+
+# flip_orig emits the opposite of either out or in
+flip_orig() {
+	local o="$1"
+
+	case "$o" in
+		out) echo "in" ;;
+		in) echo "out" ;;
+		*) fail "invalid origination to flip: $o" ;;
+	esac
+}
+
+# flip_from emits the opposite of either lan or wan
+flip_from() {
+	local f="$1"
+
+	case "$f" in
+		lan) echo "wan" ;;
+		wan) echo "lan" ;;
+		*) fail "invalid from to flip: $f" ;;
+	esac
+}
+
+# connmark_tcp emits the mark to set for the specified origination for TCP
+connmark_tcp() {
+	local o="$1"
+
+	case "$o" in
+		out) echo "$CONNMARK_TCP_OUT" ;;
+		in) echo "$CONNMARK_TCP_IN" ;;
+		*) fail "invalid origination to get connmark for TCP: $o" ;;
+	esac
+}
+
+# connlabel emits the label to set for the specified origination
+connlabel() {
+	local o="$1"
+
+	case "$o" in
+		out) echo "$CONNLABEL_OUT" ;;
+		in) echo "$CONNLABEL_IN" ;;
+		*) fail "invalid origination to get connlabel for: $o" ;;
+	esac
+}
+
+# orig_to_addr emits packet address in subnet for the specified origination
+orig_to_addr() {
+	local o="$1"
+
+	case "$o" in
+		in) echo "dst" ;;
+		out) echo "src" ;;
+		*) fail "invalid origination to get address for: $o" ;;
+	esac
+}
+
+# from_to_lan_addr emits the lan packet address for the specified from
+from_to_lan_addr() {
+	local f="$1"
+
+	case "$f" in
+		lan) echo "src" ;;
+		wan) echo "dst" ;;
+		*) fail "invalid from to get address for: $f" ;;
+	esac
+}
+
+# from_to_wan_addr emits the wan packet address for the specified from
+from_to_wan_addr() {
+	local f="$1"
+
+	case "$f" in
+		lan) echo "dst" ;;
+		wan) echo "src" ;;
+		*) fail "invalid from to get wan address for: $f" ;;
+	esac
+}
+
+# from_to_orig emits origination if SYN comes from specified from
+from_to_orig() {
+	local f="$1"
+
+	case "$f" in
+		lan) echo "out" ;;
+		wan) echo "in" ;;
+		*) fail "invalid from to get origination for: $f" ;;
+	esac
+}
+
+# from_to_ctdir emits conntrack direction for from and origination
+from_to_ctdir() {
+	local f="$1"
+	local o="$2"
+
+	case "$f,$o" in
+		lan,out) echo "ORIGINAL" ;;
+		lan,in) echo "REPLY" ;;
+		wan,out) echo "REPLY" ;;
+		wan,in) echo "ORIGINAL" ;;
+		*) fail "invalid from,origination to get conntrak direction for: $f,$o" ;;
+	esac
+}
+
+# create_ipsets creates the used ipsets
+create_ipsets() {
+	local subnet="$1"
+	local a
+
+	for a in "${IPSET_ARGS[@]}"; do
+		ipset create $a || return 1
+	done
+
+	msg "created ${#IPSETS[@]} ipsets"
+}
+
+# destroy_ipsets destroys the used ipsets
+destroy_ipsets() {
+	local s
+
+	for s in ${IPSETS[@]}; do
+		ipset destroy $s
+	done
+
+	msg "deleted ${#IPSETS[@]} ipsets"
+}
+
+# ipsets_exist returns true if any of the ipsets exist
+ipsets_exist() {
+	local s
+	local n=0
+	local ret=1
+
+	for s in ${IPSETS[@]}; do
+		ipset list --terse $s &>/dev/null && ((n++))
+	done
+
+	if (( n > 0 )); then
+		ret=0
+		if (( n != ${#IPSETS[@]} )); then
+			msg "only $n/${#IPSETS[@]} ipsets exist"
+		fi
+	fi
+
+	return $ret
+}
+
+# create_chains creates the used chains
+create_chains() {
+	local c
+
+	for c in ${CHAINS[@]}; do
+		iptables -t $TABLE -N $c || return 1
+	done
+
+	msg "created ${#CHAINS[@]} chains"
+}
+
+# destroy_chains flushes and deletes the used chains
+destroy_chains() {
+	local c
+
+	for c in ${CHAINS[@]}; do
+		iptables -t $TABLE -F $c
+		iptables -t $TABLE -X $c
+	done
+
+	msg "deleted ${#CHAINS[@]} chains"
+}
+
+# chains_exist returns true if any of the chains exist
+chains_exist() {
+	local c
+	local n=0
+	local ret=1
+
+	for c in ${CHAINS[@]}; do
+		iptables -t $TABLE -n -L "$c" &>/dev/null && ((n++))
+	done
+
+	if (( n > 0 )); then
+		ret=0
+		if (( n != ${#CHAINS[@]} )); then
+			msg "only $n/${#CHAINS[@]} chains installed"
+		fi
+	fi
+
+	return $ret
+}
+
+# create_main_chain creates the main ECN chain jumped to from POSTROUTING
+create_main_chain() {
+	local subnet="$1"
+
+	# handle packets from WAN
+	iptables -t $TABLE -A ecn_main \
+		-m comment --comment "from wan: all IP" \
+		-d $subnet \
+		-g ecn_from-wan || return 1
+
+	# handle packets from LAN
+	iptables -t $TABLE -A ecn_main \
+		-m comment --comment "from lan: all IP" \
+		-s $subnet \
+		-g ecn_from-lan || return 1
+}
+
+# create_ip_ecn_chain creates the action chains for ECN marked packets
+create_ip_ecn_chain() {
+	local from="$1"
+	local codepoint="$2"
+
+	local chain="ecn_${codepoint}-from-$from"
+	local ipset
+	local lan_addr=$(from_to_lan_addr $from)
+	local wan_addr=$(from_to_wan_addr $from)
+
+	# match lan IP address
+	ipset="ecn_ip-${codepoint}-from-$from"
+	iptables -t $TABLE -A $chain \
+		-m comment --comment "$codepoint from $from: $lan_addr IP address" \
+		-m set ! --match-set $ipset $lan_addr \
+		-j SET --add-set $ipset $lan_addr || return 1
+
+	# match packets for outgoing non-TCP conntrack supported flows
+	ipset="ecn_out_ct-${codepoint}-from-$from"
+	iptables -t $TABLE -A $chain \
+		-m comment --comment "out: IP $codepoint from $from, $wan_addr port" \
+		! -p tcp \
+		-m conntrack --ctdir $(from_to_ctdir $from out) \
+		-m set ! --match-set $ipset $lan_addr,$wan_addr \
+		-j SET --add-set $ipset $lan_addr,$wan_addr || return 1
+
+	# match packets for incoming non-TCP conntrack supported flows
+	ipset="ecn_in_ct-${codepoint}-from-$from"
+	iptables -t $TABLE -A $chain \
+		-m comment --comment "in: IP $codepoint from $from, $lan_addr port" \
+		! -p tcp \
+		-m conntrack --ctdir $(from_to_ctdir $from in) \
+		-m set ! --match-set $ipset $lan_addr,$lan_addr \
+		-j SET --add-set $ipset $lan_addr,$lan_addr || return 1
+}
+
+# create_from_chain creates the chains from LAN or WAN
+create_from_chain() {
+	local from="$1"
+
+	local chain="ecn_from-$from"
+	local ect0_chain="ecn_ect0-from-$from"
+	local ce_chain="ecn_ce-from-$from"
+	local ect1_chain="ecn_ect1-from-$from"
+	local out_non_syn_chain="ecn_out_from-$from"
+	local in_non_syn_chain="ecn_in_from-$from"
+	local syn_chain="ecn_$(from_to_orig $from)_syn"
+
+	# jump for ECT(0) IP
+	iptables -t $TABLE -A $chain \
+		-m comment --comment "from $from: ECT(0) marked IP" \
+		-m ecn --ecn-ip-ect 2 \
+		-j $ect0_chain || return 1
+
+	# jump for CE IP
+	iptables -t $TABLE -A $chain \
+		-m comment --comment "from $from: CE marked IP" \
+		-m ecn --ecn-ip-ect 3 \
+		-j $ce_chain || return 1
+
+	# jump for ECT(1) IP
+	iptables -t $TABLE -A $chain \
+		-m comment --comment "from $from: ECT(1) marked IP" \
+		-m ecn --ecn-ip-ect 1 \
+		-j $ect1_chain || return 1
+
+	# return if not TCP packet
+	iptables -t $TABLE -A $chain \
+		-m comment --comment "from $from: return if not TCP" \
+		! -p tcp \
+		-j RETURN || return 1
+
+	# return if not SYN or SYN/ACK and connmark not set
+	iptables -t $TABLE -A $chain \
+		-m comment --comment \
+			"from $from: return if not SYN or SYN/ACK and connmark not set" \
+		-p tcp \
+		-m tcp ! --tcp-flags SYN SYN \
+		-m connmark ! --mark $CONNMARK_MASK/$CONNMARK_MASK \
+		-j RETURN || return 1
+
+	# return if not SYN or SYN/ACK and connlabel not set
+	#iptables -t $TABLE -A $chain \
+	#	-m comment --comment \
+	#		"from $from: return if not SYN or SYN/ACK and connmark not set" \
+	#	-p tcp \
+	#	-m tcp ! --tcp-flags SYN SYN \
+	#	-m connlabel ! --label $CONNLABEL \
+	#	-j RETURN || return 1
+
+	# process non-SYN packets for outgoing connection
+	iptables -t $TABLE -A $chain \
+		-m comment --comment \
+			"from $from: goto handling of non-SYN packets for outgoing connections" \
+		-p tcp \
+		-m tcp ! --tcp-flags SYN SYN \
+		-m connmark --mark $CONNMARK_TCP_OUT \
+		-g $out_non_syn_chain || return 1
+
+	# process non-SYN packets for outgoing connection (connlabel version)
+	#iptables -t $TABLE -A $chain \
+	#	-m comment --comment \
+	#		"from $from: goto handling of non-SYN packets for outgoing connections" \
+	#	-p tcp \
+	#	-m tcp ! --tcp-flags SYN SYN \
+	#	-m connlabel --label $CONNLABEL_OUT \
+	#	-g $out_non_syn_chain || return 1
+
+	# process non-SYN packets for incoming connection
+	iptables -t $TABLE -A $chain \
+		-m comment --comment \
+			"from $from: goto handling of non-SYN packets for incoming connections" \
+		-p tcp \
+		-m tcp ! --tcp-flags SYN SYN \
+		-m connmark --mark $CONNMARK_TCP_IN \
+		-g $in_non_syn_chain || return 1
+
+	# process non-SYN packets for incoming connection (connlabel version)
+	#iptables -t $TABLE -A $chain \
+	#	-m comment --comment \
+	#		"from $from: goto handling of non-SYN packets for incoming connections" \
+	#	-p tcp \
+	#	-m tcp ! --tcp-flags SYN SYN \
+	#	-m connlabel --label $CONNLABEL_IN \
+	#	-g $in_non_syn_chain || return 1
+
+	# process packets with SYN flag from LAN
+	iptables -t $TABLE -A $chain \
+		-m comment --comment \
+			"$(from_to_orig $from): goto SYN or SYN/ACKs handling" \
+		-p tcp \
+		-m tcp --tcp-flags SYN SYN \
+		-g $syn_chain || return 1
+}
+
+# create_syn_chain creates a syn and syn/ack counting chain
+create_syn_chain() {
+	local orig="$1" # out or in
+
+	local fl_orig=$(flip_orig $orig)
+
+	local syn_chain="ecn_${orig}_syn"
+	local synack_chain="ecn_${orig}_synack"
+	local all_syn_ipset="ecn_${orig}_all-syn"
+	local ecn_syn_ipset="ecn_${orig}_ecn-syn"
+	local ecn_synack_ipset="ecn_${fl_orig}_ecn-synack"
+
+	local addr=$(orig_to_addr $orig)
+	local fl_addr=$(orig_to_addr $fl_orig)
+
+	### add rules to ECN SYN/ACK action chain 
+	iptables -t $TABLE -A $synack_chain \
+		-m comment --comment "$fl_orig: match $ecn_synack_ipset $addr" \
+		-m set ! --match-set $ecn_synack_ipset $addr \
+		-j SET --add-set $ecn_synack_ipset $addr || return 1
+
+	iptables -t $TABLE -A $synack_chain \
+		-m comment --comment "$fl_orig: connmark $(connmark_tcp $fl_orig)" \
+		-j CONNMARK --set-mark $(connmark_tcp $fl_orig) || return 1
+
+	# connlabel version
+	#iptables -t $TABLE -A $synack_chain \
+	#	-m comment --comment "$fl_orig: connlabel $(connlabel $fl_orig)" \
+	#	-m connlabel --label $CONNLABEL --set \
+	#	-m connlabel --label $(connlabel $fl_orig) --set || return 1
+
+	### add rules to SYN chain
+
+	# all SYNs
+	iptables -t $TABLE -A $syn_chain \
+		-m comment --comment "$orig: all SYNs" \
+		-p tcp \
+		-m tcp --syn \
+		-m set ! --match-set $all_syn_ipset $addr \
+		-j SET --add-set $all_syn_ipset $addr || return 1
+
+	# ECN SYNs
+	iptables -t $TABLE -A $syn_chain \
+		-m comment --comment "$orig: ECN SYNs" \
+		-p tcp \
+		-m tcp --syn \
+		-m ecn --ecn-tcp-cwr --ecn-tcp-ece \
+		-m set ! --match-set $ecn_syn_ipset $addr \
+		-j SET --add-set $ecn_syn_ipset $addr || return 1
+
+	# ECN SYN/ACKs
+	iptables -t $TABLE -A $syn_chain \
+		-m comment --comment "$fl_orig: ECN SYN/ACKs" \
+		-p tcp \
+		-m tcp --tcp-flags ALL SYN,ACK \
+		-m ecn --ecn-tcp-ece ! --ecn-tcp-cwr \
+		-g $synack_chain || return 1
+}
+
+# create_non_syn_chain creates a chain for processing tcp non-SYN packets
+create_non_syn_chain() {
+	local orig="$1"
+	local from="$2"
+
+	local chain="ecn_${orig}_from-$from"
+	local ece_ipset="ecn_${orig}_ece-from-$from"
+	local ect0_ipset="ecn_${orig}_ect0-from-$from"
+	local ce_ipset="ecn_${orig}_ce-from-$from"
+	local ect1_ipset="ecn_${orig}_ect1-from-$from"
+
+	local addr=$(from_to_lan_addr $from)
+
+	# ECE flags
+	iptables -t $TABLE -A $chain \
+		-m comment --comment "$orig: ECE from $from" \
+		-p tcp \
+		-m ecn --ecn-tcp-ece \
+		-m set ! --match-set $ece_ipset $addr \
+		-j SET --add-set $ece_ipset $addr || return 1
+
+	# ECT(0) marks
+	iptables -t $TABLE -A $chain \
+		-m comment --comment "$orig: ECT(0) from $from" \
+		-m ecn --ecn-ip-ect 2 \
+		-m set ! --match-set $ect0_ipset $addr \
+		-j SET --add-set $ect0_ipset $addr || return 1
+
+	# CE marks
+	iptables -t $TABLE -A $chain \
+		-m comment --comment "$orig: CE from $from" \
+		-m ecn --ecn-ip-ect 3 \
+		-m set ! --match-set $ce_ipset $addr \
+		-j SET --add-set $ce_ipset $addr || return 1
+
+	# ECT(1) marks
+	iptables -t $TABLE -A $chain \
+		-m comment --comment "$orig: ECT(1) from $from" \
+		-m ecn --ecn-ip-ect 1 \
+		-m set ! --match-set $ect1_ipset $addr \
+		-j SET --add-set $ect1_ipset $addr || return 1
+}
+
+# cmd_install is the install command
+cmd_install() {
+	local do_start
+
+	# parse install command line
+	while :; do
+		case $1 in
+		-s|--subnet)
+			if [ "$2" ]; then
+				subnet=$2
+				shift
+			else
+				fail_usage "--subnet requires an argument"
+			fi
+			;;
+		--subnet=?*)
+			subnet=${1#*=}
+			;;
+		--subnet=)
+			fail_usage "--subnet requires an argument"
+			;;
+		--start=*)
+			fail_usage "--start does not take an argument"
+			;;
+		--start)
+			do_start=true
+			;;
+		--)
+			shift
+			break
+			;;
+		-?*)
+			fail_usage "unknown install flag: $1"
+			;;
+		*)
+			break
+		esac
+	
+		shift
+	done
+
+	# revert removes all changes after an error
+	revert() {
+		(
+		destroy_chains
+		destroy_ipsets
+		) 2>/dev/null
+		fail "install failed, reverted all changes"
+	}
+
+	# cmd_install body
+
+	[[ ! $subnet ]] && fail "subnet parameter is required"
+	ensure_root
+	if chains_exist; then
+		fail "already installed (chains exist in $TABLE table)"
+	fi
+	if ipsets_exist; then
+		fail "already installed (ipsets exist)"
+	fi
+	create_ipsets $subnet || revert
+	create_chains || revert
+	create_syn_chain out || revert
+	create_syn_chain in || revert
+	create_non_syn_chain out lan || revert
+	create_non_syn_chain out wan || revert
+	create_non_syn_chain in lan || revert
+	create_non_syn_chain in wan || revert
+	create_ip_ecn_chain lan ect0 || revert
+	create_ip_ecn_chain wan ect0 || revert
+	create_ip_ecn_chain lan ce || revert
+	create_ip_ecn_chain wan ce || revert
+	create_ip_ecn_chain lan ect1 || revert
+	create_ip_ecn_chain wan ect1 || revert
+	create_from_chain lan || revert
+	create_from_chain wan || revert
+	create_main_chain $subnet || revert
+
+	if [[ $do_start ]]; then
+		add_jump || revert
+		msg "install successful and counting started"
+	else
+		msg "install successful (use start command to start counting)"
+	fi
+}
+
+# cmd_uninstall is the uninstall command
+cmd_uninstall() {
+	ensure_root
+
+	(
+	remove_jump
+	chains_exist && destroy_chains
+	ipsets_exist && destroy_ipsets
+	) 2>/dev/null
+	msg "uninstall successful"
+}
+
+#############################################################################
+#
+# START/STOP COMMANDS
+#
+#
+
+# ipt_jump calls iptables to add and remove
+ipt_jump() {
+	local op="$1"
+	iptables -t $TABLE $op $JUMP_CHAIN \
+		-m comment --comment "ECN: jump to ecn_main, added by iptables-ecn start" \
+		-j ecn_main
+}
+
+# add_jump adds jump and emits a message
+add_jump() {
+	ipt_jump -A || return 1
+	msg "started counting (added jump to ecn_main from $TABLE $JUMP_CHAIN)"
+}
+
+# remove_jump removes jump and emits a message
+remove_jump() {
+	ipt_jump -D || return 1
+	msg "stopped counting (removed jump to ecn_main from $TABLE $JUMP_CHAIN)"
+}
+
+# jump_exists checks if the jump exists
+jump_exists () {
+	ipt_jump -C
+}
+
+# cmd_start is the start command
+cmd_start() {
+	ensure_root
+
+	if jump_exists &>/dev/null; then
+		fail "already started"
+	fi
+
+	if ! add_jump; then
+		fail "run install first"
+	fi
+}
+
+# cmd_stop is the stop command
+cmd_stop() {
+	ensure_root
+
+	if ! jump_exists &>/dev/null; then
+		fail "already stopped"
+	fi
+
+	remove_jump
+}
+
+#############################################################################
+#
+# LIST/SAVE COMMANDS
+#
+#
+
+# cmd_list is the list command
+cmd_list() {
+	local ipset_terse="-terse"
+	local ipset_sorted
+	local s
+	local c
+	local ret=0
+
+	# parse list command line
+	while :; do
+		case $1 in
+		-v|--verbose)
+			ipset_terse=""
+			;;
+		-s|--sort)
+			ipset_sorted="-sorted"
+			;;
+		--)
+			shift
+			break
+			;;
+		-?*)
+			fail_usage "unknown list flag: $1"
+			;;
+		*)
+			break
+		esac
+	
+		shift
+	done
+
+	ensure_root
+
+	for c in ${CHAINS[@]}; do
+		echo ---
+		if ! iptables -t $TABLE -L $c -n -v -x; then
+			msg "$c chain does not seem to exist"
+			ret=1
+		fi
+	done
+
+	for s in ${IPSETS[@]}; do
+		echo ---
+		if ! ipset list $s $ipset_sorted $ipset_terse; then
+			msg "$s ipset does not seem to exist"
+			ret=1
+		fi
+	done
+
+	return $ret
+}
+
+# cmd_save is the save command
+cmd_save() {
+	local dir
+	local s
+	local c
+	local f
+	local ret=0
+
+	ensure_root
+	ensure_cmds mktemp tar gzip date
+
+	dir=$(mktemp -d)
+	trap "rm -rf $dir" EXIT
+
+	msg "writing chains"
+
+	for c in ${CHAINS[@]}; do
+		if ! iptables -t $TABLE -L $c -n -v -x > "$dir/chain_$c"; then
+			msg "$c chain does not seem to exist"
+			ret=1
+		fi
+	done
+
+	msg "writing ipsets"
+
+	for s in ${IPSETS[@]}; do
+		if ! ipset list $s> "$dir/ipset_$s"; then
+			msg "$s ipset does not seem to exist"
+			ret=1
+		fi
+	done
+
+	f="ecn_data_$(date +%Y%m%d_%H%M%S).tar.gz"
+	msg "saving to $f"
+
+	tar czf "$f" -C "$dir" . || fail "save failed"
+	
+	if (( $ret != 0 )); then
+		msg "saved only partial data"
+	else
+		msg "save successful"
+	fi
+}
+
+#############################################################################
+#
+# MAIN
+#
+#
+
+# ensure_cmds fails the program if any of the specified commands do not exist
+ensure_cmds() {
+	local c
+	for c in "$@"; do
+		if ! command -v "$c" >& /dev/null; then
+			fail "$c command required but not found"
+		fi
+	done
+}
+
+# validate_setup checks the system for required functionality
+validate_setup() {
+	ensure_cmds iptables ipset
+}
+
+# parse command line
+while :; do
+	case $1 in
+	-h|--help)
+		emit_usage
+		exit 0
+		;;
+	--)
+		shift
+		break
+		;;
+	-?*)
+		fail_usage "unknown flag: $1"
+		;;
+	*)
+		break
+	esac
+
+	shift
+done
+
+# validate and run command
+case $1 in
+	"")
+		fail_usage "missing command"
+		;;
+	install|start|list|save|stop|uninstall)
+		cmd="$1"
+		shift
+		validate_setup
+		cmd_$cmd "$@"
+		;;
+	*)
+		fail_usage "unknown command: $1"
+		;;
+esac
