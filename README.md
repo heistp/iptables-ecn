@@ -1,8 +1,8 @@
 iptables-ecn
 ============
 
-The `iptables-ecn` script and associated program in `ecn-stats.go` gathers ECN
-statistics on Linux routers with iptables and ipset support.
+The `iptables-ecn` script and associated analysis program gathers ECN statistics
+on Linux routers with iptables and ipset support.
 
 It was used to create an informational Internet Draft, available [here]().
 
@@ -24,14 +24,14 @@ including:
 
 # Sample Data
 
-See the freenet directory in this repo for sample output from the analysis
-program. The data here was obtained from an ISP's Internet gateway.
+See the [freenet](freenet) directory in this repo for sample output from the
+analysis program, obtained from an ISP's Internet gateway.
 
 # Installation and Running
 
 ## iptables-ecn
 
-`iptables-ecn` should be able to run on any Linux machine with bash, iptables
+`iptables-ecn` should be able to run on any Linux router with bash, iptables
 and ipset support. Run it without arguments for usage. Sample commands:
 
 1. `iptables-ecn install -s 192.168.100.0/24 --start` installs and starts the
@@ -41,10 +41,16 @@ and ipset support. Run it without arguments for usage. Sample commands:
 3. `iptables-ecn uninstall` removes all created chains and ipsets (any unsaved
    data is lost)
 
-**Note** The script uses connmarks to track TCP flows, so could potentially
-conflict with connmarks used for other purposes. Some equivalent statements that
-use connlabels are commented out, but since they were found to require more CPU,
-they are not used by default.
+**Important notes:**
+* The script uses connmarks to track TCP flows, which could potentially conflict
+  with connmarks used for other purposes. Some equivalent statements that use
+  connlabels are commented out, but since they were found to require more CPU,
+  they are not used by default.
+* It has been tested on a /16 subnet for an ISP with around 860 users, and
+  seemed to scale well for this load. Larger loads may or may not be possible.
+* It has undergone basic, but not extensive lab testing. In particular, support
+  for conntrack protocols could use more verification of accuracy, which so far
+  was only tested briefly with [IRTT](https://github.com/heistp/irtt).
 
 ## ecn-stats.go
 
