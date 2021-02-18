@@ -2,14 +2,14 @@ All IP
 ------
 
     Packets, CE, ECT(0) and ECT(1) are packet counts, and use
-    units of M, B or T for million, billion or trillion.
+    units of M, G or T for mega, giga, or terapackets.
 
     Total (both directions):
 
                    TCP         Conntrack [*]   Other      Total
                    ---         -------------   -----      -----
         Bytes      101.22 TB   ->              33.22 TB   134.46 TB
-        Packets    76.60 B     ->              43.52 B    120.14 B
+        Packets    76.60 G     ->              43.52 G    120.14 G
         |-CE       10031       3.38 M          813951     4.20 M
         |-ECT(0)   523.91 M    9.66 M          2.55 M     536.12 M
         |-ECT(1)   63          6.68 M          182928     6.86 M
@@ -19,7 +19,7 @@ All IP
                    TCP        Conntrack [*]   Other      Total
                    ---        -------------   -----      -----
         Bytes      95.79 TB   ->              26.65 TB   122.45 TB
-        Packets    41.43 B    ->              30.29 B    71.72 B
+        Packets    41.43 G    ->              30.29 G    71.72 G
         |-CE       9298       3.38 M          721002     4.11 M
         |-ECT(0)   480.35 M   9.62 M          1.93 M     491.91 M
         |-ECT(1)   62         6.68 M          65111      6.74 M
@@ -29,13 +29,13 @@ All IP
                    TCP       Conntrack [*]   Other     Total
                    ---       -------------   -----     -----
         Bytes      5.43 TB   ->              6.57 TB   12.00 TB
-        Packets    35.17 B   ->              13.23 B   48.41 B
+        Packets    35.17 G   ->              13.23 G   48.41 G
         |-CE       733       60              92949     93742
         |-ECT(0)   43.56 M   40366           614623    44.21 M
         |-ECT(1)   1         28              117817    117846
 
         [*] Conntrack protocols: UDP, ICMP, DCCP, SCTP, GRE
-            Conntrack Bytes and Packets included in Other
+            Conntrack total Bytes and Packets included in Other
 
 TCP initiated from LAN to WAN
 -----------------------------
@@ -199,8 +199,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         From LAN  59      26692   28
         From WAN  2838929 9562002 6632561
 
-    ECN codepoints by client IP, with "interesting" results
-        (selected ports, w/ possible ECN activity, or >1000 total ECN signals):
+    ECN codepoint packet counts by client IP, with selected ports:
+        (ports with '*' had >10 ECT(0) marks)
 
                                      ECT(0) CE   ECT(1) ECT(0)  CE      ECT(1)
                                      from   from from   from    from    from
@@ -923,15 +923,15 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.255.90                 0      0    0      1       125     0
         10.45.255.97                 36     0    0      0       0       0
 
-    ECN codepoint counts for selected ports:
+    ECN codepoint packet counts for selected ports:
 
                                      ECT(0) CE   ECT(1) ECT(0)  CE      ECT(1)
                                      from   from from   from    from    from
         Port                         LAN    LAN  LAN    WAN     WAN     WAN
         ----                         ---    ---  ---    ---     ---     ---
-        icmp:ttl-zero-during-transit 0      0    0      65      2       66
         icmp:host-unreachable        22990  0    0      1171    2575    43
         icmp:port-unreachable        404    0    0      6632    40795   3539
+        icmp:ttl-zero-during-transit 0      0    0      65      2       66
         icmp:network-unreachable     0      0    0      321     4       0
         ipencap:0                    1      0    0      0       0       0
         udp:53 (domain)              0      0    0      0       403     1
@@ -965,8 +965,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
         From LAN  1      13674  0
         From WAN  538072 60836  46508
 
-    ECN codepoints by server IP, with "interesting" results
-        (selected ports, w/ possible ECN activity, or >1000 total ECN signals):
+    ECN codepoint packet counts by server IP, with selected ports:
+        (ports with '*' had >10 ECT(0) marks)
 
                       ECT(0) CE   ECT(1) ECT(0) CE     ECT(1)
                       from   from from   from   from   from
@@ -1085,17 +1085,17 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
         10.45.248.33  0      1    0      0      1      0
         10.45.253.31  1      0    0      0      2      1
 
-    ECN codepoint counts for selected ports:
+    ECN codepoint packet counts for selected ports:
 
                                  ECT(0) CE   ECT(1) ECT(0) CE     ECT(1)
                                  from   from from   from   from   from
         Port                     LAN    LAN  LAN    WAN    WAN    WAN
         ----                     ---    ---  ---    ---    ---    ---
+        icmp:port-unreachable    3554   0    0      13566  160    49
         icmp:host-unreachable    10120  0    0      16     5      0
+        icmp:network-unreachable 0      0    0      6      0      0
         icmp:echo-request        0      0    0      0      1      0
         icmp:echo-reply          0      1    0      0      0      0
-        icmp:port-unreachable    3554   0    0      13566  160    49
-        icmp:network-unreachable 0      0    0      6      0      0
         pim:0                    0      0    0      0      1      0
         udp:1 (tcpmux)           0      0    0      0      27     5
         udp:1053-65408 [77]      0      0    0      47248  537878 46454

@@ -1,7 +1,8 @@
 package main
 
 // This program analyzes data from iptables-ecn. See the Configuration section
-// at the top of the file to set configuration, and run the program for usage.
+// at the top of the file to set configuration, or use the format flag to
+// select a few builtin output formats. Run the program for usage.
 
 import (
 	"archive/tar"
@@ -39,23 +40,23 @@ import (
 var IPAnonymizationMask = "/8"
 
 // ShowConntrackPortsByIP means show the conntrack port list, by IP address.
-const ShowConntrackPortsByIP = true
+var ShowConntrackPortsByIP = true
 
 // ShowConntrackPortsByPort means show the conntrack port list, by port.
-const ShowConntrackPortsByPort = true
+var ShowConntrackPortsByPort = true
 
 // ShowLANToWAN means to show stats for LAN to WAN flows.
-const ShowLANtoWAN = true
+var ShowLANtoWAN = true
 
 // ShowWANToLAN means to show stats for WAN to LAN flows.
-const ShowWANtoLAN = true
+var ShowWANtoLAN = true
 
 // ActiveIPSynThreshold is the minimum number of TCP SYNs to call an IP active.
-const ActiveIPSynThreshold = int64(10)
+var ActiveIPSynThreshold = int64(10)
 
 // MaybeECNThreshold is the number of ECT(0) marks to consider a conntrack flow
 // as "maybe ECN".
-const MaybeECNThreshold = int64(10)
+var MaybeECNThreshold = int64(10)
 
 // InterestingPorts are those listed for conntrack protocols.
 var InterestingPorts = []int{
@@ -175,11 +176,26 @@ var CTUninterestingByPort = CTUninteresting{
 }
 
 // MaxColumnWidth is the maximum allowed column width for tables.
-//const MaxColumnWidth = 22
-const MaxColumnWidth = math.MaxInt32
+var MaxColumnWidth = math.MaxInt32
 
 // EmitHeadersEvery is the number of rows in the ports list to repeat headers.
-const EmitHeadersEvery = math.MaxInt32
+var EmitHeadersEvery = math.MaxInt32
+
+// Formats maps format flag values to funcs that configure the formats.
+var Formats = map[string]func(){
+	"default": func() {},
+	"draft": func() {
+		//ShowConntrackPortsByIP = false
+		ShowWANtoLAN = false
+		MaxColumnWidth = 22
+		MaybeECNThreshold = 100
+	},
+	"full": func() {
+		CTInterestingByIP.Verbose = true
+		CTInterestingByPort.Verbose = true
+		CTUninterestingByIP.PortPrefixes = []string{}
+	},
+}
 
 //
 //
@@ -783,8 +799,7 @@ func (c *CTCounters) ECNPackets() int64 {
 
 // MaybeECN returns true if ECT(0) is nonzero in both directions.
 func (c *CTCounters) MaybeECN() bool {
-	return c.FromLAN.ECT0.Packets > MaybeECNThreshold ||
-		c.FromWAN.ECT0.Packets > MaybeECNThreshold
+	return c.FromLAN.ECT0.Packets+c.FromWAN.ECT0.Packets > MaybeECNThreshold
 }
 
 // LikelyECN returns true if ECT(0) and CE are nonzero in opposite directions.
@@ -1448,7 +1463,7 @@ func packetsWithUnits(packets int64) string {
 	case packets >= 1e12:
 		return fmt.Sprintf("%.2f T", float64(packets)/1e12)
 	case packets >= 1e9:
-		return fmt.Sprintf("%.2f B", float64(packets)/1e9)
+		return fmt.Sprintf("%.2f G", float64(packets)/1e9)
 	case packets >= 1e6:
 		return fmt.Sprintf("%.2f M", float64(packets)/1e6)
 	default:
@@ -1829,11 +1844,21 @@ func (s *CTStats) Emit(orig Origination) {
 
 	// emit ECN signals by IP and port
 	if ShowConntrackPortsByIP && len(s.ECNByIP) > 0 {
+		var portsShown string
+		if CTInterestingByIP.Verbose {
+			portsShown = "all"
+		} else {
+			portsShown = "selected"
+		}
+
 		fmt.Println()
-		fmt.Printf("    ECN codepoints by %s IP, with \"interesting\" results\n",
-			clientSense)
-		fmt.Printf("        (selected ports, w/ possible ECN activity, or >%d total ECN signals):\n",
-			CTInterestingByIP.MinSignals)
+		fmt.Printf("    ECN codepoint packet counts by %s IP, with %s ports:\n",
+			clientSense, portsShown)
+
+		if CTNoteworthyByIP.MaybeECN {
+			fmt.Printf("        (ports with '*' had >%d ECT(0) marks)\n",
+				MaybeECNThreshold)
+		}
 
 		ips := s.ECNByIPIPs()
 
@@ -1865,7 +1890,7 @@ func (s *CTStats) Emit(orig Origination) {
 	// emit ECN signals by port
 	if ShowConntrackPortsByPort && len(s.ECNByPort) > 0 {
 		fmt.Println()
-		fmt.Printf("    ECN codepoint counts for selected ports:\n")
+		fmt.Printf("    ECN codepoint packet counts for selected ports:\n")
 
 		fmt.Println()
 		w = newTableWriter("        ")
@@ -2209,7 +2234,7 @@ func emitStats(d *ECNData, s *ECNStats) {
 	UPrintf("All IP")
 	fmt.Println()
 	fmt.Println("    Packets, CE, ECT(0) and ECT(1) are packet counts, and use")
-	fmt.Println("    units of M, B or T for million, billion or trillion.")
+	fmt.Println("    units of M, G or T for mega, giga, or terapackets.")
 	fmt.Println()
 	fmt.Println("    Total (both directions):")
 	fmt.Println()
@@ -2227,7 +2252,7 @@ func emitStats(d *ECNData, s *ECNStats) {
 
 	fmt.Println()
 	fmt.Printf("        [*] Conntrack protocols: %s\n", conntrackProtocols)
-	fmt.Printf("            Conntrack Bytes and Packets included in Other\n")
+	fmt.Printf("            Conntrack total Bytes and Packets included in Other\n")
 
 	if ShowLANtoWAN {
 		fmt.Println()
@@ -2298,9 +2323,20 @@ func usage() {
 
 // main is the entry point
 func main() {
+	var format string
+
 	// flags
 	flag.Usage = usage
+	flag.StringVar(&format, "format", "default",
+		"output format, one of default, draft or full")
 	flag.Parse()
+
+	// set up output format
+	if f, ok := Formats[format]; ok {
+		f()
+	} else {
+		fail("unknown format: '%s'", format)
+	}
 
 	// args
 	if len(flag.Args()) == 0 {
