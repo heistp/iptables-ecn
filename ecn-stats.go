@@ -2316,7 +2316,7 @@ func usage() {
 		fmt.Fprintf(flag.CommandLine.Output(), f+"\n", a...)
 	}
 
-	p("usage: ecn-stats <-anon> ecn_data_xxx.tar.gz|.tar")
+	p("usage: ecn-stats <-format default|draft|full> ecn_data_xxx.tar.gz|.tar")
 	p("")
 	flag.PrintDefaults()
 }
