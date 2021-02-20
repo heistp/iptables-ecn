@@ -1669,7 +1669,7 @@ func (s *TCPStats) Emit(orig Origination) {
 
 	if len(s.ECNByIP) > 0 {
 		fmt.Println()
-		fmt.Printf("    ECN congestion signals by active IP:\n")
+		fmt.Printf("    ECN codepoint packet counts by active IP, for nonzero CE or ECE:\n")
 
 		ips := make([]net.IP, 0, len(s.ECNByIP))
 		for ipk := range s.ECNByIP {
@@ -1680,14 +1680,14 @@ func (s *TCPStats) Emit(orig Origination) {
 
 		fmt.Println()
 		w = newTableWriter("        ")
-		//w.Row("", "CE", "ECE", "CE", "ECE")
-		//w.Row("", "from", "from", "from", "from")
-		w.URow("IP", "CE from WAN", "ECE from LAN", "CE from LAN",
-			"ECE from WAN")
+		w.Row("", "ECT(0)", "CE", "ECE", "ECT(0)", "CE", "ECE")
+		w.Row("", "from", "from", "from", "from", "from", "from")
+		w.URow("IP", "WAN", "WAN", "LAN", "LAN", "LAN", "WAN")
 		for _, ip := range ips {
 			td := s.ECNByIP[IPToKey(ip)]
 			w.Row(ip,
-				td.FromWAN.CE, td.FromLAN.ECE, td.FromLAN.CE, td.FromWAN.ECE)
+				td.FromWAN.ECT0, td.FromWAN.CE, td.FromLAN.ECE,
+				td.FromLAN.ECT0, td.FromLAN.CE, td.FromWAN.ECE)
 		}
 		w.Flush()
 	}
@@ -1821,7 +1821,7 @@ func (s *CTStats) Emit(orig Origination) {
 	emitECNByPortHeader := func() {
 		w.Row("", "ECT(0)", "CE", "ECT(1)", "ECT(0)", "CE", "ECT(1)")
 		w.Row("", "from", "from", "from", "from", "from", "from")
-		w.URow("Port", "LAN", "LAN", "LAN", "WAN", "WAN", "WAN")
+		w.URow("Port", "WAN", "WAN", "WAN", "LAN", "LAN", "LAN")
 	}
 
 	// emitECNByPort emits the port rows, used in two places
@@ -1873,12 +1873,12 @@ func (s *CTStats) Emit(orig Origination) {
 			if r%EmitHeadersEvery == 0 {
 				w.Row("", "ECT(0)", "CE", "ECT(1)", "ECT(0)", "CE", "ECT(1)")
 				w.Row("", "from", "from", "from", "from", "from", "from")
-				w.URow("IP/Port", "LAN", "LAN", "LAN", "WAN", "WAN", "WAN")
+				w.URow("IP/Port", "WAN", "WAN", "WAN", "LAN", "LAN", "LAN")
 			}
 			r++
 
-			w.Row(ip, ctc.FromLAN.ECT0, ctc.FromLAN.CE, ctc.FromLAN.ECT1,
-				ctc.FromWAN.ECT0, ctc.FromWAN.CE, ctc.FromWAN.ECT1)
+			w.Row(ip, ctc.FromWAN.ECT0, ctc.FromWAN.CE, ctc.FromWAN.ECT1,
+				ctc.FromLAN.ECT0, ctc.FromLAN.CE, ctc.FromLAN.ECT1)
 
 			ctw := NewCTWriter(w, "  ",
 				CTInterestingByIP, CTUninterestingByIP, CTNoteworthyByIP)
@@ -2077,8 +2077,8 @@ func (w *CTWriter) Row(p string, ctc *CTCounters, highlight bool) {
 	}
 
 	w.tableWriter.Row(prefix+p,
-		ctc.FromLAN.ECT0, ctc.FromLAN.CE, ctc.FromLAN.ECT1,
-		ctc.FromWAN.ECT0, ctc.FromWAN.CE, ctc.FromWAN.ECT1)
+		ctc.FromWAN.ECT0, ctc.FromWAN.CE, ctc.FromWAN.ECT1,
+		ctc.FromLAN.ECT0, ctc.FromLAN.CE, ctc.FromLAN.ECT1)
 }
 
 // Flush writes any accumulated results.
