@@ -132,6 +132,9 @@ var CTInterestingByPort = CTInteresting{
 	Ports: InterestingPorts,
 }
 
+// KnownAQMSubnets is a list of subnets with known AQM deployments.
+var KnownAQMSubnets = []string{"10.45.64.0/24", "10.45.235.0/24"}
+
 // CTNoteworthyByIP is what should be marked with an asterisk in the conntrack
 // port list by IP address.
 var CTNoteworthyByIP = CTNoteworthy{
@@ -277,6 +280,21 @@ func IPLessThan(a, b net.IP) bool {
 			return false
 		}
 	}
+	return false
+}
+
+// IPWithKnownAQM returns true if an IP is in one of KnownAQMSubnets.
+func IPWithKnownAQM(ip net.IP) bool {
+	for _, cidr := range KnownAQMSubnets {
+		_, ipnet, err := net.ParseCIDR(cidr)
+		if err != nil {
+			log.Printf("bad AQM subnet %s: '%s'", cidr, err.Error)
+		}
+		if ipnet.Contains(ip) {
+			return true
+		}
+	}
+
 	return false
 }
 
@@ -769,6 +787,37 @@ type TCPECNCounters struct {
 func (t *TCPECNCounters) Add(t2 *TCPECNCounters) {
 	t.ECNCounters.Add(&t2.ECNCounters)
 	t.ECE.Add(t2.ECE)
+}
+
+// PossibleAQM returns true if these counters suggest possible AQM activity.
+func (t *TCPECNCounters) PossibleAQM(t2 *TCPECNCounters) bool {
+	// must see nonzero ECT0 in both directions, indicating ECN capability
+	if t.ECT0.Zero() || t2.ECT0.Zero() {
+		return false
+	}
+
+	// must see nonzero ECE in either direction
+	if t.ECE.Zero() && t2.ECE.Zero() {
+		return false
+	}
+
+	// nonzero CE to ECE ratio must be >= 2:1, or else we subtract the ECEs from
+	// the ECEs in the other direction and test it, so as not to miss possible
+	// AQM activity mixed with port scan type activity
+	if !t.CE.Zero() && !t2.ECE.Zero() && t2.ECE.Packets < 2*t.CE.Packets {
+		tece := t.ECE.Packets - t2.ECE.Packets
+		if tece < 2*t2.CE.Packets {
+			return false
+		}
+	}
+	if !t2.CE.Zero() && !t.ECE.Zero() && t.ECE.Packets < 2*t2.CE.Packets {
+		t2ece := t2.ECE.Packets - t.ECE.Packets
+		if t2ece < 2*t.CE.Packets {
+			return false
+		}
+	}
+
+	return true
 }
 
 // TCPCounters contains counters for TCP.
@@ -1531,24 +1580,30 @@ func analyze(d *ECNData) (s *ECNStats) {
 
 // TCPStats contains statistics for all TCP flows.
 type TCPStats struct {
-	AllIPs                      int64
-	ActiveIPs                   int64
-	IPsInitiatedECN             int64
-	PercentIPsInitiatedECN      float64
-	IPsNegotiatedECN            int64
-	PercentIPsNegotiatedECN     float64
-	IPsSawECNCongestion         int64
-	PercentIPsSawCongestion     float64
-	PercentECNIPsSawCongestion  float64
-	IPsSawECT1                  int64
-	AllSyns                     Counters
-	ECNSyns                     Counters
-	ECNSynAcks                  Counters
-	EstPercentFlowsInitiatedECN float64
-	EstPercentECNFlowsAccepted  float64
-	TCPECNFromLAN               TCPECNCounters
-	TCPECNFromWAN               TCPECNCounters
-	ECNByIP                     map[IPKey]TCPCounters
+	AllIPs                             int64
+	ActiveIPs                          int64
+	IPsInitiatedECN                    int64
+	PercentIPsInitiatedECN             float64
+	IPsNegotiatedECN                   int64
+	PercentIPsNegotiatedECN            float64
+	IPsSawCEOrECE                      int64
+	PercentIPsSawCEOrECE               float64
+	IPsSawECT1                         int64
+	PercentECNIPsSawCEOrECE            float64
+	IPsSawAQMActivity                  int64
+	PercentECNIPsSawAQMActivity        float64
+	IPsSawKnownAQMActivity             int64
+	PercentECNIPsSawKnownAQMActivity   float64
+	IPsSawUnknownAQMActivity           int64
+	PercentECNIPsSawUnknownAQMActivity float64
+	AllSyns                            Counters
+	ECNSyns                            Counters
+	ECNSynAcks                         Counters
+	EstPercentFlowsInitiatedECN        float64
+	EstPercentECNFlowsAccepted         float64
+	TCPECNFromLAN                      TCPECNCounters
+	TCPECNFromWAN                      TCPECNCounters
+	ECNByIP                            map[IPKey]TCPCounters
 }
 
 func NewTCPStats() *TCPStats {
@@ -1578,12 +1633,23 @@ func analyzeTCP(d map[IPKey]TCPCounters) (s *TCPStats) {
 		}
 		if tc.FromLAN.CE.Packets > 0 || tc.FromWAN.CE.Packets > 0 ||
 			tc.FromLAN.ECE.Packets > 0 || tc.FromWAN.ECE.Packets > 0 {
-			s.IPsSawECNCongestion++
+			s.IPsSawCEOrECE++
 			s.ECNByIP[ip] = tc
 		}
 		if tc.FromLAN.ECT1.Packets > 0 || tc.FromWAN.ECT1.Packets > 0 {
 			s.IPsSawECT1++
 		}
+
+		if tc.FromLAN.PossibleAQM(&tc.FromWAN) {
+			s.IPsSawAQMActivity++
+
+			if IPWithKnownAQM(ip.IP()) {
+				s.IPsSawKnownAQMActivity++
+			} else {
+				s.IPsSawUnknownAQMActivity++
+			}
+		}
+
 		s.TCPECNFromLAN.Add(&tc.FromLAN)
 		s.TCPECNFromWAN.Add(&tc.FromWAN)
 	}
@@ -1600,11 +1666,17 @@ func analyzeTCP(d map[IPKey]TCPCounters) (s *TCPStats) {
 	if s.ActiveIPs > 0 {
 		s.PercentIPsInitiatedECN = percent(s.IPsInitiatedECN, s.ActiveIPs)
 		s.PercentIPsNegotiatedECN = percent(s.IPsNegotiatedECN, s.ActiveIPs)
-		s.PercentIPsSawCongestion = percent(s.IPsSawECNCongestion, s.ActiveIPs)
+		s.PercentIPsSawCEOrECE = percent(s.IPsSawCEOrECE, s.ActiveIPs)
 	}
 
 	if s.IPsNegotiatedECN > 0 {
-		s.PercentECNIPsSawCongestion = percent(s.IPsSawECNCongestion,
+		s.PercentECNIPsSawCEOrECE = percent(s.IPsSawCEOrECE,
+			s.IPsNegotiatedECN)
+		s.PercentECNIPsSawAQMActivity = percent(s.IPsSawAQMActivity,
+			s.IPsNegotiatedECN)
+		s.PercentECNIPsSawKnownAQMActivity = percent(s.IPsSawKnownAQMActivity,
+			s.IPsNegotiatedECN)
+		s.PercentECNIPsSawUnknownAQMActivity = percent(s.IPsSawUnknownAQMActivity,
 			s.IPsNegotiatedECN)
 	}
 
@@ -1624,22 +1696,6 @@ func (s *TCPStats) Emit(orig Origination) {
 
 	var w *tableWriter
 
-	fmt.Printf("    IP address counts with TCP and ECN activity:\n")
-	fmt.Println()
-	w = newTableWriter("        ")
-	w.Printf("Active (%s >= %d SYNs):\t%d (of %d)",
-		sentSense, ActiveIPSynThreshold, s.ActiveIPs, s.AllIPs)
-	w.Printf("%s any ECN flows:\t%d (%.1f%%)",
-		strings.Title(initSense), s.IPsInitiatedECN, s.PercentIPsInitiatedECN)
-	w.Printf("Negotiated any ECN flows:\t%d (%.1f%%)",
-		s.IPsNegotiatedECN, s.PercentIPsNegotiatedECN)
-	w.Printf("Saw CE or ECE on ECN flow:\t%d (%.1f%% of ECN, %.1f%% of all)",
-		s.IPsSawECNCongestion, s.PercentECNIPsSawCongestion,
-		s.PercentIPsSawCongestion)
-	w.Printf("Saw ECT(1) on ECN flow:\t%d", s.IPsSawECT1)
-	w.Flush()
-
-	fmt.Println()
 	fmt.Printf("    SYN packet count totals for active IPs:\n")
 	fmt.Println()
 	w = newTableWriter("        ")
@@ -1667,9 +1723,48 @@ func (s *TCPStats) Emit(orig Origination) {
 		s.TCPECNFromWAN.ECT1)
 	w.Flush()
 
+	fmt.Println()
+	fmt.Printf("    IP address counts with TCP and ECN activity:\n")
+	fmt.Println()
+	w = newTableWriter("        ")
+	w.Printf("Active (%s >= %d SYNs):\t%d (of %d)",
+		sentSense, ActiveIPSynThreshold, s.ActiveIPs, s.AllIPs)
+	w.Printf("%s any ECN flows:\t%d (%.1f%%)",
+		strings.Title(initSense), s.IPsInitiatedECN, s.PercentIPsInitiatedECN)
+	w.Printf("Negotiated any ECN flows:\t%d (%.1f%%)",
+		s.IPsNegotiatedECN, s.PercentIPsNegotiatedECN)
+	w.Printf("Saw CE or ECE on ECN flow:\t%d (%.1f%% of ECN negotiating)",
+		s.IPsSawCEOrECE, s.PercentECNIPsSawCEOrECE)
+	w.Printf("Saw ECT(1) on ECN flow:\t%d", s.IPsSawECT1)
+	w.Flush()
+
 	if len(s.ECNByIP) > 0 {
 		fmt.Println()
+		fmt.Printf("    IP address counts with possible AQM activity:\n")
+		fmt.Println()
+		fmt.Printf("        Criteria for possible AQM activity:\n")
+		fmt.Printf("            nonzero ECT(0) in both directions\n")
+		fmt.Printf("            AND nonzero ECE in either direction\n")
+		fmt.Printf("            AND ECE:CE ratio >= 2:1 OR opposite direction\n")
+		fmt.Printf("                ECE difference meets same criteria\n")
+		fmt.Println()
+		w = newTableWriter("        ")
+		w.truncate = math.MaxInt32
+		w.Printf("IPs with possible AQM activity:\t%d (%.1f%% of ECN negotiating)",
+			s.IPsSawAQMActivity, s.PercentECNIPsSawAQMActivity)
+		w.Printf("|- from known AQMs:\t%d (%.1f%% of ECN negotiating)",
+			s.IPsSawKnownAQMActivity, s.PercentECNIPsSawKnownAQMActivity)
+		w.Printf("|- from unknown, possible AQMs:\t%d (%.1f%% of ECN negotiating)",
+			s.IPsSawUnknownAQMActivity, s.PercentECNIPsSawUnknownAQMActivity)
+		w.Flush()
+
+		fmt.Println()
 		fmt.Printf("    ECN codepoint packet counts by active IP, for nonzero CE or ECE:\n")
+
+		fmt.Println()
+		fmt.Printf("        Flags column:\n")
+		fmt.Printf("            A: possible AQM activity (see Criteria above)\n")
+		fmt.Printf("            K: known AQM deployment\n")
 
 		ips := make([]net.IP, 0, len(s.ECNByIP))
 		for ipk := range s.ECNByIP {
@@ -1680,12 +1775,25 @@ func (s *TCPStats) Emit(orig Origination) {
 
 		fmt.Println()
 		w = newTableWriter("        ")
-		w.Row("", "ECT(0)", "CE", "ECE", "ECT(0)", "CE", "ECE")
-		w.Row("", "from", "from", "from", "from", "from", "from")
-		w.URow("IP", "WAN", "WAN", "LAN", "LAN", "LAN", "WAN")
+		w.Row("", "", "ECT(0)", "CE", "ECE", "ECT(0)", "CE", "ECE")
+		w.Row("", "", "from", "from", "from", "from", "from", "from")
+		w.URow("IP", "Flags", "WAN", "WAN", "LAN", "LAN", "LAN", "WAN")
+
+		flags := func(ip net.IP, tc *TCPCounters) (f string) {
+			if tc.FromLAN.PossibleAQM(&tc.FromWAN) {
+				f += "A"
+			} else {
+				f += " "
+			}
+			if IPWithKnownAQM(ip) {
+				f += "K"
+			}
+			return
+		}
+
 		for _, ip := range ips {
 			td := s.ECNByIP[IPToKey(ip)]
-			w.Row(ip,
+			w.Row(ip, flags(ip, &td),
 				td.FromWAN.ECT0, td.FromWAN.CE, td.FromLAN.ECE,
 				td.FromLAN.ECT0, td.FromLAN.CE, td.FromWAN.ECE)
 		}
