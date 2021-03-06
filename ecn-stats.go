@@ -1586,6 +1586,10 @@ type TCPStats struct {
 	PercentIPsInitiatedECN             float64
 	IPsNegotiatedECN                   int64
 	PercentIPsNegotiatedECN            float64
+	IPsNegotiatedECNKnownAQM           int64
+	PercentIPsNegotiatedECNKnownAQM    float64
+	IPsNegotiatedECNNotKnownAQM        int64
+	PercentIPsNegotiatedECNNotKnownAQM float64
 	IPsSawCEOrECE                      int64
 	PercentIPsSawCEOrECE               float64
 	IPsSawECT1                         int64
@@ -1630,6 +1634,11 @@ func analyzeTCP(d map[IPKey]TCPCounters) (s *TCPStats) {
 		}
 		if tc.ECNSynAck.Packets > 0 {
 			s.IPsNegotiatedECN++
+			if IPWithKnownAQM(ip.IP()) {
+				s.IPsNegotiatedECNKnownAQM++
+			} else {
+				s.IPsNegotiatedECNNotKnownAQM++
+			}
 		}
 		if tc.FromLAN.CE.Packets > 0 || tc.FromWAN.CE.Packets > 0 ||
 			tc.FromLAN.ECE.Packets > 0 || tc.FromWAN.ECE.Packets > 0 {
@@ -1674,10 +1683,14 @@ func analyzeTCP(d map[IPKey]TCPCounters) (s *TCPStats) {
 			s.IPsNegotiatedECN)
 		s.PercentECNIPsSawAQMActivity = percent(s.IPsSawAQMActivity,
 			s.IPsNegotiatedECN)
-		s.PercentECNIPsSawKnownAQMActivity = percent(s.IPsSawKnownAQMActivity,
+		s.PercentECNIPsSawKnownAQMActivity = percent(
+			s.IPsSawKnownAQMActivity, s.IPsNegotiatedECNKnownAQM)
+		s.PercentECNIPsSawUnknownAQMActivity = percent(
+			s.IPsSawUnknownAQMActivity, s.IPsNegotiatedECNNotKnownAQM)
+		s.PercentIPsNegotiatedECNKnownAQM = percent(s.IPsNegotiatedECNKnownAQM,
 			s.IPsNegotiatedECN)
-		s.PercentECNIPsSawUnknownAQMActivity = percent(s.IPsSawUnknownAQMActivity,
-			s.IPsNegotiatedECN)
+		s.PercentIPsNegotiatedECNNotKnownAQM = percent(
+			s.IPsNegotiatedECNNotKnownAQM, s.IPsNegotiatedECN)
 	}
 
 	return
@@ -1742,6 +1755,14 @@ func (s *TCPStats) Emit(orig Origination) {
 		fmt.Println()
 		fmt.Printf("    IP address counts with possible AQM activity:\n")
 		fmt.Println()
+		w = newTableWriter("        ")
+		w.Printf("Negotiated any ECN flows:\t%d", s.IPsNegotiatedECN)
+		w.Printf("|- in subnet with known AQM:\t%d (%.1f%% of ECN negotiating)",
+			s.IPsNegotiatedECNKnownAQM, s.PercentIPsNegotiatedECNKnownAQM)
+		w.Printf("|- in subnet without known AQM:\t%d (%.1f%% of ECN negotiating)",
+			s.IPsNegotiatedECNNotKnownAQM, s.PercentIPsNegotiatedECNNotKnownAQM)
+		w.Flush()
+		fmt.Println()
 		fmt.Printf("        Criteria for possible AQM activity:\n")
 		fmt.Printf("            nonzero ECT(0) in both directions\n")
 		fmt.Printf("            AND nonzero ECE in either direction\n")
@@ -1752,14 +1773,16 @@ func (s *TCPStats) Emit(orig Origination) {
 		w.truncate = math.MaxInt32
 		w.Printf("IPs with possible AQM activity:\t%d (%.1f%% of ECN negotiating)",
 			s.IPsSawAQMActivity, s.PercentECNIPsSawAQMActivity)
-		w.Printf("|- from known AQMs:\t%d (%.1f%% of ECN negotiating)",
-			s.IPsSawKnownAQMActivity, s.PercentECNIPsSawKnownAQMActivity)
-		w.Printf("|- from unknown, possible AQMs:\t%d (%.1f%% of ECN negotiating)",
-			s.IPsSawUnknownAQMActivity, s.PercentECNIPsSawUnknownAQMActivity)
+		w.Printf("|- from known AQMs:\t%d (%.1f%% of %d /w known AQM)",
+			s.IPsSawKnownAQMActivity, s.PercentECNIPsSawKnownAQMActivity,
+			s.IPsNegotiatedECNKnownAQM)
+		w.Printf("|- from unknown, possible AQMs:\t%d (%.1f%% of %d w/o known AQM)",
+			s.IPsSawUnknownAQMActivity, s.PercentECNIPsSawUnknownAQMActivity,
+			s.IPsNegotiatedECNNotKnownAQM)
 		w.Flush()
 
 		fmt.Println()
-		fmt.Printf("    ECN codepoint packet counts by active IP, for nonzero CE or ECE:\n")
+		fmt.Printf("    ECN flow packet counts by active IP, for nonzero CE or ECE:\n")
 
 		fmt.Println()
 		fmt.Printf("        Flags column:\n")
@@ -1906,7 +1929,7 @@ func (s *CTStats) Emit(orig Origination) {
 
 	// emit ECN packet count totals
 	fmt.Println()
-	fmt.Printf("    ECN packet count totals for active IPs:\n")
+	fmt.Printf("    ECN flow packet count totals for active IPs:\n")
 	fmt.Println()
 	w = newTableWriter("        ")
 	w.URow("Direction", "CE", "ECT(0)", "ECT(1)")
@@ -2305,7 +2328,7 @@ func (s *IPStats) Emit(ipc IPCounters) {
 
 	// table of all bytes and packets, TCP, Non-TCP and Total
 	w := newTableTabWriter(tw, "        ")
-	w.URow("", "TCP", "Conntrack [*]", "Other", "Total")
+	w.URow("", "TCP [*]", "Conntrack [+]", "Other", "Total")
 	w.Row("Bytes",
 		bytesWithUnits(ipc.TCP.Bytes),
 		"->",
@@ -2359,7 +2382,9 @@ func emitStats(d *ECNData, s *ECNStats) {
 	s.IPFromLAN.Emit(d.IPFromLAN)
 
 	fmt.Println()
-	fmt.Printf("        [*] Conntrack protocols: %s\n", conntrackProtocols)
+	fmt.Printf("        [*] TCP ECN packet counts only for negotiated ECN flows\n")
+	fmt.Printf("            Counts for non-ECN TCP flows in Other\n")
+	fmt.Printf("        [+] Conntrack protocols: %s\n", conntrackProtocols)
 	fmt.Printf("            Conntrack total Bytes and Packets included in Other\n")
 
 	if ShowLANtoWAN {

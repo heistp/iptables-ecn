@@ -6,8 +6,8 @@ All IP
 
     Total (both directions):
 
-                   TCP         Conntrack [*]   Other      Total
-                   ---         -------------   -----      -----
+                   TCP [*]     Conntrack [+]   Other      Total
+                   -------     -------------   -----      -----
         Bytes      101.22 TB   ->              33.22 TB   134.46 TB
         Packets    76.60 G     ->              43.52 G    120.14 G
         |-CE       10031       3.38 M          813951     4.20 M
@@ -16,8 +16,8 @@ All IP
 
     WAN to LAN:
 
-                   TCP        Conntrack [*]   Other      Total
-                   ---        -------------   -----      -----
+                   TCP [*]    Conntrack [+]   Other      Total
+                   -------    -------------   -----      -----
         Bytes      95.79 TB   ->              26.65 TB   122.45 TB
         Packets    41.43 G    ->              30.29 G    71.72 G
         |-CE       9298       3.38 M          721002     4.11 M
@@ -26,15 +26,17 @@ All IP
 
     LAN to WAN:
 
-                   TCP       Conntrack [*]   Other     Total
-                   ---       -------------   -----     -----
+                   TCP [*]   Conntrack [+]   Other     Total
+                   -------   -------------   -----     -----
         Bytes      5.43 TB   ->              6.57 TB   12.00 TB
         Packets    35.17 G   ->              13.23 G   48.41 G
         |-CE       733       60              92949     93742
         |-ECT(0)   43.56 M   40366           614623    44.21 M
         |-ECT(1)   1         28              117817    117846
 
-        [*] Conntrack protocols: UDP, ICMP, DCCP, SCTP, GRE
+        [*] TCP ECN packet counts only for negotiated ECN flows
+            Counts for non-ECN TCP flows in Other
+        [+] Conntrack protocols: UDP, ICMP, DCCP, SCTP, GRE
             Conntrack total Bytes and Packets included in Other
 
 TCP initiated from LAN to WAN
@@ -63,6 +65,10 @@ TCP initiated from LAN to WAN
 
     IP address counts with possible AQM activity:
 
+        Negotiated any ECN flows:       382
+        |- in subnet with known AQM:    63 (16.5% of ECN negotiating)
+        |- in subnet without known AQM: 319 (83.5% of ECN negotiating)
+
         Criteria for possible AQM activity:
             nonzero ECT(0) in both directions
             AND nonzero ECE in either direction
@@ -70,10 +76,10 @@ TCP initiated from LAN to WAN
                 ECE difference meets same criteria
 
         IPs with possible AQM activity: 71 (18.6% of ECN negotiating)
-        |- from known AQMs:             38 (9.9% of ECN negotiating)
-        |- from unknown, possible AQMs: 33 (8.6% of ECN negotiating)
+        |- from known AQMs:             38 (60.3% of 63 /w known AQM)
+        |- from unknown, possible AQMs: 33 (10.3% of 319 w/o known AQM)
 
-    ECN codepoint packet counts by active IP, for nonzero CE or ECE:
+    ECN flow packet counts by active IP, for nonzero CE or ECE:
 
         Flags column:
             A: possible AQM activity (see Criteria above)
@@ -210,7 +216,7 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         Active IPs with ECN signals:              420
         Active IP/dstport pairs with ECN signals: 24972
 
-    ECN packet count totals for active IPs:
+    ECN flow packet count totals for active IPs:
 
         Direction CE      ECT(0)  ECT(1)
         --------- --      ------  ------
@@ -947,10 +953,10 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
                                      from    from    from    from   from from
         Port                         WAN     WAN     WAN     LAN    LAN  LAN
         ----                         ---     ---     ---     ---    ---  ---
-        icmp:port-unreachable        6632    40795   3539    404    0    0
-        icmp:ttl-zero-during-transit 65      2       66      0      0    0
-        icmp:host-unreachable        1171    2575    43      22990  0    0
         icmp:network-unreachable     321     4       0       0      0    0
+        icmp:host-unreachable        1171    2575    43      22990  0    0
+        icmp:ttl-zero-during-transit 65      2       66      0      0    0
+        icmp:port-unreachable        6632    40795   3539    404    0    0
         ipencap:0                    0       0       0       1      0    0
         udp:53 (domain)              0       403     1       0      0    0
         udp:80 (http)                0       33      0       0      0    0
@@ -976,7 +982,7 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
         Active IPs with ECN signals:              99
         Active IP/dstport pairs with ECN signals: 356
 
-    ECN packet count totals for active IPs:
+    ECN flow packet count totals for active IPs:
 
         Direction CE     ECT(0) ECT(1)
         --------- --     ------ ------
@@ -1109,11 +1115,11 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
                                  from   from   from   from   from from
         Port                     WAN    WAN    WAN    LAN    LAN  LAN
         ----                     ---    ---    ---    ---    ---  ---
+        icmp:host-unreachable    16     5      0      10120  0    0
+        icmp:echo-reply          0      0      0      0      1    0
+        icmp:echo-request        0      1      0      0      0    0
         icmp:port-unreachable    13566  160    49     3554   0    0
         icmp:network-unreachable 6      0      0      0      0    0
-        icmp:echo-reply          0      0      0      0      1    0
-        icmp:host-unreachable    16     5      0      10120  0    0
-        icmp:echo-request        0      1      0      0      0    0
         pim:0                    0      1      0      0      0    0
         udp:1 (tcpmux)           0      27     5      0      0    0
         udp:1053-65408 [77]      47248  537878 46454  0      0    0
