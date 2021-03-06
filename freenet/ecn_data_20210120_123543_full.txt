@@ -369,8 +369,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         * udp:4500 (ipsec-nat-t)       11      0       0       0      0    0
           udp:6672 (vision-server)     5       0       0       0      0    0
         10.45.64.31                    34129   2468    58304   27     0    0
-        * icmp:port-unreachable        23      0       63      0      0    0
         * icmp:host-unreachable        0       0       0       27     0    0
+        * icmp:port-unreachable        23      0       63      0      0    0
           udp:37658                    0       0       4346    0      0    0
         * udp:38129                    24957   2468    15281   0      0    0
           udp:38884                    0       0       10409   0      0    0
@@ -401,8 +401,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.64.85                    0       0       0       4      0    0
           icmp:host-unreachable        0       0       0       4      0    0
         10.45.64.86                    7       434404  3       9      0    0
-          icmp:port-unreachable        4       21      0       0      0    0
         * icmp:host-unreachable        0       4       0       9      0    0
+          icmp:port-unreachable        4       21      0       0      0    0
           udp:2303 (proxy-gateway)     0       1       0       0      0    0
           udp:4400 (ds-srv)            0       29065   0       0      0    0
           udp:6881                     0       11      0       0      0    0
@@ -591,8 +591,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.64.103                   0       0       0       47     0    0
         * icmp:host-unreachable        0       0       0       47     0    0
         10.45.64.104                   70      293     31      1      0    0
-        * icmp:host-unreachable        0       5       0       1      0    0
           icmp:port-unreachable        3       53      8       0      0    0
+        * icmp:host-unreachable        0       5       0       1      0    0
           udp:2926 (mobile-file-dl)    0       15      0       0      0    0
         * udp:6050                     37      0       0       0      0    0
           udp:6881                     0       20      2       0      0    0
@@ -687,8 +687,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.64.125                   0       0       0       22     0    0
         * icmp:host-unreachable        0       0       0       22     0    0
         10.45.64.126                   1       10      0       37     0    0
-        * icmp:host-unreachable        0       0       0       37     0    0
           icmp:port-unreachable        1       5       0       0      0    0
+        * icmp:host-unreachable        0       0       0       37     0    0
           udp:6881                     0       2       0       0      0    0
           udp:19766                    0       1       0       0      0    0
           udp:29416                    0       1       0       0      0    0
@@ -704,10 +704,10 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.65.11                    0       0       0       6      0    0
           icmp:host-unreachable        0       0       0       6      0    0
         10.45.65.16                    1686    40141   36888   505    0    0
-        * icmp:ttl-zero-during-transit 31      2       36      0      0    0
-        * icmp:port-unreachable        55      1980    34      0      0    0
         * icmp:host-unreachable        5       16      5       505    0    0
           icmp:network-unreachable     0       3       0       0      0    0
+        * icmp:port-unreachable        55      1980    34      0      0    0
+        * icmp:ttl-zero-during-transit 31      2       36      0      0    0
         * udp:3478 (stun)              1595    22049   4       0      0    0
           udp:6881                     0       287     1       0      0    0
           udp:26808                    0       0       36805   0      0    0
@@ -729,8 +729,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         * icmp:host-unreachable        0       0       0       94     0    0
           udp:3478 (stun)              0       17      0       0      0    0
         10.45.65.94                    319     0       1       25     0    0
-        * icmp:host-unreachable        0       0       0       25     0    0
         * icmp:network-unreachable     319     0       0       0      0    0
+        * icmp:host-unreachable        0       0       0       25     0    0
           udp:3478 (stun)              0       0       1       0      0    0
         10.45.65.95                    0       0       0       8      0    0
           icmp:host-unreachable        0       0       0       8      0    0
@@ -745,9 +745,9 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.65.110                   0       0       0       38     0    0
         * icmp:host-unreachable        0       0       0       38     0    0
         10.45.65.112                   39      1168    18      75     0    0
+        * icmp:ttl-zero-during-transit 13      0       10      0      0    0
           icmp:network-unreachable     0       1       0       0      0    0
         * icmp:port-unreachable        18      694     6       0      0    0
-        * icmp:ttl-zero-during-transit 13      0       10      0      0    0
         * icmp:host-unreachable        1       6       2       75     0    0
           udp:1024                     0       1       0       0      0    0
           udp:6881                     0       87      0       0      0    0
@@ -910,8 +910,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         * icmp:host-unreachable        0       0       0       532    0    0
           udp:65058                    0       11      0       0      0    0
         10.45.86.68                    760     3528    614     325    0    0
-        * icmp:port-unreachable        212     1024    255     0      0    0
         * icmp:host-unreachable        165     110     0       325    0    0
+        * icmp:port-unreachable        212     1024    255     0      0    0
           udp:80 (http)                0       2       0       0      0    0
           udp:1034 (activesync)        0       3       0       0      0    0
           udp:1048 (neod2)             0       2       0       0      0    0
@@ -4293,8 +4293,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.87.127                   0       0       0       44     0    0
         * icmp:host-unreachable        0       0       0       44     0    0
         10.45.92.74                    31      0       1       2      0    0
-          icmp:port-unreachable        0       0       0       2      0    0
           icmp:ttl-zero-during-transit 0       0       1       0      0    0
+          icmp:port-unreachable        0       0       0       2      0    0
         * udp:1443 (ies-lm)            31      0       0       0      0    0
         10.45.93.69                    15      122     6       0      0    0
           icmp:host-unreachable        2       2       0       0      0    0
@@ -4326,8 +4326,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           udp:63882                    0       2       0       0      0    0
           udp:65500                    0       2       0       0      0    0
         10.45.93.75                    361     2945    278     4      0    0
-          icmp:host-unreachable        6       48      0       0      0    0
         * icmp:port-unreachable        218     653     119     4      0    0
+          icmp:host-unreachable        6       48      0       0      0    0
           udp:1392 (iclpv-pm)          0       1       0       0      0    0
           udp:2209 (rimf-ps)           0       1       0       0      0    0
           udp:2926 (mobile-file-dl)    0       1       0       0      0    0
@@ -5386,8 +5386,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           udp:27032                    0       2       0       0      0    0
           udp:54268                    0       0       1       0      0    0
         10.45.101.103                  21      21899   15      0      0    0
-          icmp:host-unreachable        0       1       0       0      0    0
           icmp:port-unreachable        10      85      2       0      0    0
+          icmp:host-unreachable        0       1       0       0      0    0
           udp:6881                     0       17      0       0      0    0
           udp:7413                     0       298     0       0      0    0
           udp:8999 (bctp)              0       0       1       0      0    0
@@ -5449,8 +5449,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.104.24                   0       0       0       324    0    0
         * icmp:host-unreachable        0       0       0       324    0    0
         10.45.104.104                  16      72      2       60     0    0
-        * icmp:host-unreachable        0       1       0       60     0    0
           icmp:port-unreachable        1       5       0       0      0    0
+        * icmp:host-unreachable        0       1       0       60     0    0
           udp:6881                     0       1       1       0      0    0
           udp:13054                    0       18      0       0      0    0
           udp:21831                    0       2       0       0      0    0
@@ -5473,8 +5473,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         * icmp:host-unreachable        0       0       0       70     0    0
         * udp:443 (https)              34      0       0       0      0    0
         10.45.107.81                   0       4421    0       3      0    0
-          icmp:port-unreachable        0       0       0       1      0    0
           icmp:host-unreachable        0       0       0       2      0    0
+          icmp:port-unreachable        0       0       0       1      0    0
           udp:61094                    0       4421    0       0      0    0
         10.45.108.3                    0       0       0       1      0    0
           icmp:host-unreachable        0       0       0       1      0    0
@@ -5577,9 +5577,9 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.108.13                   0       0       0       14     0    0
         * icmp:host-unreachable        0       0       0       14     0    0
         10.45.108.24                   799     5543    1059    117    0    0
-        * icmp:port-unreachable        267     1199    247     0      0    0
           icmp:network-unreachable     2       0       0       0      0    0
         * icmp:host-unreachable        17      75      2       117    0    0
+        * icmp:port-unreachable        267     1199    247     0      0    0
           udp:1028                     0       0       1       0      0    0
           udp:1047 (neod1)             0       7       0       0      0    0
           udp:1054 (brvread)           0       1       0       0      0    0
@@ -7896,8 +7896,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.108.126                  0       0       0       12     0    0
         * icmp:host-unreachable        0       0       0       12     0    0
         10.45.112.74                   9       95      4       371    0    0
-        * icmp:host-unreachable        1       1       0       371    0    0
           icmp:port-unreachable        4       24      1       0      0    0
+        * icmp:host-unreachable        1       1       0       371    0    0
           udp:6881                     0       6       0       0      0    0
           udp:8999 (bctp)              0       0       1       0      0    0
           udp:11813                    0       1       0       0      0    0
@@ -7987,8 +7987,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.113.36                   0       0       0       2      0    0
           icmp:host-unreachable        0       0       0       2      0    0
         10.45.113.66                   1       11      0       0      0    0
-          icmp:port-unreachable        0       2       0       0      0    0
           icmp:host-unreachable        1       0       0       0      0    0
+          icmp:port-unreachable        0       2       0       0      0    0
           udp:6881                     0       1       0       0      0    0
           udp:21446                    0       6       0       0      0    0
           udp:47798                    0       1       0       0      0    0
@@ -8277,8 +8277,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           udp:65157                    0       1       0       0      0    0
           udp:65423                    0       2       0       0      0    0
         10.45.124.31                   1720    5946    16897   105    0    0
-          icmp:port-unreachable        0       36      0       0      0    0
         * icmp:host-unreachable        0       0       0       105    0    0
+          icmp:port-unreachable        0       36      0       0      0    0
           udp:3478 (stun)              0       6       0       0      0    0
           udp:39036                    0       6       0       0      0    0
           udp:48621                    0       361     0       0      0    0
@@ -8301,8 +8301,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.124.89                   0       0       0       2      0    0
           icmp:host-unreachable        0       0       0       2      0    0
         10.45.124.107                  142     626895  83      0      0    0
-          icmp:host-unreachable        0       7       0       0      0    0
         * icmp:port-unreachable        55      153     31      0      0    0
+          icmp:host-unreachable        0       7       0       0      0    0
           udp:6881                     0       54      2       0      0    0
           udp:6899                     0       1       0       0      0    0
           udp:10662                    0       4       0       0      0    0
@@ -8610,8 +8610,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           icmp:ttl-zero-during-transit 0       0       1       0      0    0
         * icmp:host-unreachable        0       0       0       37     0    0
         10.45.137.62                   5       29      1       14     0    0
-        * icmp:host-unreachable        0       0       0       14     0    0
           icmp:port-unreachable        1       5       1       0      0    0
+        * icmp:host-unreachable        0       0       0       14     0    0
           udp:443 (https)              2       0       0       0      0    0
           udp:2284 (lnvmaps)           0       1       0       0      0    0
           udp:7495                     0       1       0       0      0    0
@@ -8635,8 +8635,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           udp:60823                    0       1       0       0      0    0
           udp:63923                    1       0       0       0      0    0
         10.45.137.119                  16      203825  12      4      0    0
-          icmp:port-unreachable        9       248     6       0      0    0
         * icmp:host-unreachable        2       1       0       4      0    0
+          icmp:port-unreachable        9       248     6       0      0    0
           udp:5237 (mnet-discovery)    0       2       0       0      0    0
           udp:5531                     0       0       1       0      0    0
           udp:6881                     0       38      1       0      0    0
@@ -8736,8 +8736,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.138.66                   0       0       0       249    0    0
         * icmp:host-unreachable        0       0       0       249    0    0
         10.45.138.88                   43      107     10      0      0    0
-        * icmp:port-unreachable        40      15      5       0      0    0
           icmp:host-unreachable        1       2       0       0      0    0
+        * icmp:port-unreachable        40      15      5       0      0    0
           udp:6881                     0       19      0       0      0    0
           udp:26846                    0       3       0       0      0    0
           udp:32677                    0       2       0       0      0    0
@@ -8783,8 +8783,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.140.81                   0       0       0       26     0    0
         * icmp:host-unreachable        0       0       0       26     0    0
         10.45.140.100                  143     465     37      0      0    0
-        * icmp:host-unreachable        20      4       0       0      0    0
         * icmp:port-unreachable        86      41      13      0      0    0
+        * icmp:host-unreachable        20      4       0       0      0    0
           udp:6881                     0       79      0       0      0    0
           udp:6882                     0       1       0       0      0    0
           udp:13864                    0       3       0       0      0    0
@@ -8945,8 +8945,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.141.103                  0       0       0       57     0    0
         * icmp:host-unreachable        0       0       0       57     0    0
         10.45.141.106                  7       190     3947    1079   0    0
-          icmp:host-unreachable        0       0       0       2      0    0
         * icmp:port-unreachable        4       8       2       5      0    0
+          icmp:host-unreachable        0       0       0       2      0    0
           udp:1047 (neod1)             0       1       0       0      0    0
           udp:3478 (stun)              0       24      12      0      0    0
         * udp:5001 (commplex-link)     0       0       0       1072   0    0
@@ -8971,8 +8971,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.141.125                  0       0       0       2      0    0
           icmp:host-unreachable        0       0       0       2      0    0
         10.45.144.20                   2       6       2       1      0    0
-          icmp:port-unreachable        2       3       0       0      0    0
           icmp:host-unreachable        0       0       0       1      0    0
+          icmp:port-unreachable        2       3       0       0      0    0
           udp:45623                    0       1       0       0      0    0
           udp:50944                    0       1       0       0      0    0
           udp:52344                    0       0       2       0      0    0
@@ -9027,9 +9027,9 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.145.75                   3024    0       0       0      0    0
         * udp:443 (https)              3024    0       0       0      0    0
         10.45.145.81                   8691    107114  8245    292    0    0
-        * icmp:port-unreachable        2333    11384   1886    290    0    0
         * icmp:host-unreachable        227     877     21      2      0    0
           icmp:ttl-zero-during-transit 2       0       0       0      0    0
+        * icmp:port-unreachable        2333    11384   1886    290    0    0
           udp:80 (http)                0       2       0       0      0    0
           udp:1027 (6a44)              0       2       0       0      0    0
           udp:1029 (solid-mux)         2       4       2       0      0    0
@@ -20462,8 +20462,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.153.10                   0       0       0       33     0    0
         * icmp:host-unreachable        0       0       0       33     0    0
         10.45.153.194                  2       86      2       0      0    0
-          icmp:port-unreachable        1       19      0       0      0    0
           icmp:host-unreachable        0       3       0       0      0    0
+          icmp:port-unreachable        1       19      0       0      0    0
           udp:4889                     0       1       0       0      0    0
           udp:6881                     0       10      0       0      0    0
           udp:20360                    0       35      0       0      0    0
@@ -20500,8 +20500,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.154.112                  0       0       0       5      0    0
           icmp:host-unreachable        0       0       0       5      0    0
         10.45.154.113                  1       88      2       3      0    0
-          icmp:host-unreachable        0       0       0       3      0    0
           icmp:port-unreachable        1       15      1       0      0    0
+          icmp:host-unreachable        0       0       0       3      0    0
           udp:6881                     0       3       0       0      0    0
           udp:11206                    0       1       0       0      0    0
           udp:23274                    0       2       0       0      0    0
@@ -20548,8 +20548,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.155.217                  0       0       0       15     0    0
         * icmp:host-unreachable        0       0       0       15     0    0
         10.45.155.229                  4       42      6       48     0    0
-          icmp:port-unreachable        2       8       2       0      0    0
         * icmp:host-unreachable        1       0       0       48     0    0
+          icmp:port-unreachable        2       8       2       0      0    0
           udp:27032                    1       3       0       0      0    0
           udp:38183                    0       1       0       0      0    0
           udp:40518                    0       1       0       0      0    0
@@ -20563,8 +20563,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           udp:59871                    0       21      0       0      0    0
           udp:63027                    0       3       0       0      0    0
         10.45.156.94                   25      152     8       0      0    0
-          icmp:host-unreachable        0       17      0       0      0    0
           icmp:port-unreachable        9       21      0       0      0    0
+          icmp:host-unreachable        0       17      0       0      0    0
           udp:6881                     0       2       0       0      0    0
         * udp:17240                    12      0       0       0      0    0
           udp:28855                    0       29      0       0      0    0
@@ -20633,8 +20633,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.176.114                  0       0       0       68     0    0
         * icmp:host-unreachable        0       0       0       68     0    0
         10.45.176.116                  188     1702    191     1      0    0
-        * icmp:host-unreachable        7       17      1       1      0    0
         * icmp:port-unreachable        80      480     76      0      0    0
+        * icmp:host-unreachable        7       17      1       1      0    0
           udp:2785 (aic-np)            0       1       0       0      0    0
           udp:4634                     0       1       0       0      0    0
           udp:6881                     1       149     7       0      0    0
@@ -21321,8 +21321,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.176.117                  0       0       0       35     0    0
         * icmp:host-unreachable        0       0       0       35     0    0
         10.45.176.119                  9320    1028270 11302   218    0    0
-        * icmp:port-unreachable        1055    11437   57      0      0    0
         * icmp:host-unreachable        252     486     10      218    0    0
+        * icmp:port-unreachable        1055    11437   57      0      0    0
           udp:1024                     2       4       1       0      0    0
           udp:1027 (6a44)              2       0       0       0      0    0
           udp:1039 (sbl)               0       2       0       0      0    0
@@ -21943,8 +21943,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           udp:3074 (xbox)              0       4       0       0      0    0
         * udp:3478 (stun)              37      685     3       0      0    0
         10.45.176.207                  8       143     0       5      0    0
-          icmp:port-unreachable        8       26      0       0      0    0
           icmp:host-unreachable        0       0       0       5      0    0
+          icmp:port-unreachable        8       26      0       0      0    0
           udp:6881                     0       8       0       0      0    0
           udp:10341                    0       15      0       0      0    0
           udp:12519                    0       10      0       0      0    0
@@ -21969,8 +21969,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           udp:51399                    1       0       0       0      0    0
           udp:60791                    0       2       0       0      0    0
         10.45.176.210                  10      32      4       1      0    0
-          icmp:port-unreachable        3       6       1       0      0    0
           icmp:host-unreachable        1       0       0       1      0    0
+          icmp:port-unreachable        3       6       1       0      0    0
           udp:6881                     0       1       0       0      0    0
           udp:7664                     1       0       0       0      0    0
           udp:35509                    0       1       0       0      0    0
@@ -21998,11 +21998,11 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         * udp:6672 (vision-server)     23      8900    0       0      0    0
           udp:56659                    2       0       0       0      0    0
         10.45.176.224                  1       0       0       114    0    0
-        * icmp:host-unreachable        0       0       0       114    0    0
           icmp:ttl-zero-during-transit 1       0       0       0      0    0
+        * icmp:host-unreachable        0       0       0       114    0    0
         10.45.176.225                  120     786     137     1      0    0
-        * icmp:port-unreachable        62      243     58      1      0    0
           icmp:host-unreachable        0       10      1       0      0    0
+        * icmp:port-unreachable        62      243     58      1      0    0
           udp:6625                     0       1       0       0      0    0
           udp:6881                     0       37      4       0      0    0
           udp:6882                     0       20      0       0      0    0
@@ -22442,8 +22442,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.176.237                  4       0       0       0      0    0
           udp:443 (https)              4       0       0       0      0    0
         10.45.177.66                   9       213     8349    0      0    0
-          icmp:port-unreachable        5       56      7       0      0    0
           icmp:host-unreachable        0       3       0       0      0    0
+          icmp:port-unreachable        5       56      7       0      0    0
           udp:6672 (vision-server)     0       0       8334    0      0    0
           udp:6881                     0       28      0       0      0    0
           udp:10327                    0       2       0       0      0    0
@@ -22474,8 +22474,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           udp:65252                    0       2       0       0      0    0
           udp:65478                    0       2       0       0      0    0
         10.45.177.68                   12      64      8       124    0    0
-          icmp:port-unreachable        3       36      1       0      0    0
         * icmp:host-unreachable        1       0       0       124    0    0
+          icmp:port-unreachable        3       36      1       0      0    0
           udp:6050                     3       0       0       0      0    0
           udp:6881                     0       3       0       0      0    0
           udp:28639                    5       0       0       0      0    0
@@ -22494,16 +22494,16 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           udp:61623                    0       0       1       0      0    0
           udp:63835                    0       10      0       0      0    0
         10.45.177.75                   0       2       0       66     0    0
-        * icmp:host-unreachable        0       0       0       66     0    0
           icmp:port-unreachable        0       1       0       0      0    0
+        * icmp:host-unreachable        0       0       0       66     0    0
           udp:50944                    0       1       0       0      0    0
         10.45.177.197                  0       2       1       0      0    0
           icmp:port-unreachable        0       1       0       0      0    0
           udp:49766                    0       1       0       0      0    0
           udp:56038                    0       0       1       0      0    0
         10.45.182.75                   44      71      17      25     0    0
-        * icmp:port-unreachable        22      11      4       0      0    0
         * icmp:host-unreachable        0       5       0       25     0    0
+        * icmp:port-unreachable        22      11      4       0      0    0
           udp:6881                     0       21      0       0      0    0
           udp:50278                    0       1       0       0      0    0
           udp:50862                    0       0       1       0      0    0
@@ -22619,8 +22619,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         * icmp:port-unreachable        0       1       0       8      0    0
         * udp:3478 (stun)              45      1578    0       0      0    0
         10.45.183.204                  0       9478    0       731    0    0
-          icmp:port-unreachable        0       20      0       0      0    0
         * icmp:host-unreachable        0       3       0       494    0    0
+          icmp:port-unreachable        0       20      0       0      0    0
         * udp:4500 (ipsec-nat-t)       0       0       0       237    0    0
           udp:22885                    0       9404    0       0      0    0
           udp:39367                    0       13      0       0      0    0
@@ -22630,8 +22630,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           icmp:host-unreachable        0       0       0       3      0    0
           udp:4500 (ipsec-nat-t)       0       0       1       0      0    0
         10.45.183.209                  3       1       0       280    0    0
-        * icmp:host-unreachable        0       0       0       280    0    0
           icmp:port-unreachable        1       0       0       0      0    0
+        * icmp:host-unreachable        0       0       0       280    0    0
           udp:51033                    0       1       0       0      0    0
           udp:62763                    2       0       0       0      0    0
         10.45.183.219                  0       0       0       61     0    0
@@ -22698,8 +22698,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.229.101                  0       0       0       69     0    0
         * icmp:host-unreachable        0       0       0       69     0    0
         10.45.229.104                  128     525     128     0      0    0
-          icmp:host-unreachable        1       7       0       0      0    0
         * icmp:port-unreachable        48      153     64      0      0    0
+          icmp:host-unreachable        1       7       0       0      0    0
           udp:1599 (simbaservices)     0       1       0       0      0    0
           udp:2532 (ovtopmd)           0       4       0       0      0    0
           udp:6881                     0       38      1       0      0    0
@@ -24005,8 +24005,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.230.223                  0       0       0       3      0    0
           icmp:host-unreachable        0       0       0       3      0    0
         10.45.230.224                  27927   93      13      0      0    0
-          icmp:port-unreachable        4       7       0       0      0    0
           icmp:host-unreachable        1       1       0       0      0    0
+          icmp:port-unreachable        4       7       0       0      0    0
           udp:6881                     0       3       0       0      0    0
           udp:13354                    0       13      0       0      0    0
           udp:21086                    9       0       0       0      0    0
@@ -24062,9 +24062,9 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         * icmp:host-unreachable        0       0       0       24     0    0
         * udp:4500 (ipsec-nat-t)       433     0       0       0      0    0
         10.45.231.21                   40      256     81      0      0    0
+          icmp:host-unreachable        1       1       0       0      0    0
           icmp:port-unreachable        4       15      7       0      0    0
           icmp:ttl-zero-during-transit 0       0       1       0      0    0
-          icmp:host-unreachable        1       1       0       0      0    0
           udp:3435 (pacom)             0       1       0       0      0    0
           udp:6881                     0       1       0       0      0    0
         * udp:14729                    12      0       0       0      0    0
@@ -24159,8 +24159,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
           udp:6969 (acmsoda)           0       1       0       0      0    0
           udp:34754                    0       1       0       0      0    0
         10.45.233.41                   0       0       3       4      0    0
-          icmp:ttl-zero-during-transit 0       0       3       0      0    0
           icmp:host-unreachable        0       0       0       4      0    0
+          icmp:ttl-zero-during-transit 0       0       3       0      0    0
         10.45.233.42                   0       0       0       115    0    0
         * icmp:host-unreachable        0       0       0       115    0    0
         10.45.233.47                   0       0       0       1      0    0
@@ -24371,8 +24371,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.235.19                   0       0       0       3      0    0
           icmp:host-unreachable        0       0       0       3      0    0
         10.45.235.24                   0       2       0       33     0    0
-          icmp:port-unreachable        0       1       0       0      0    0
         * icmp:host-unreachable        0       0       0       33     0    0
+          icmp:port-unreachable        0       1       0       0      0    0
           udp:63955                    0       1       0       0      0    0
         10.45.235.25                   2310    28152   68      17     0    0
         * icmp:host-unreachable        0       1       0       17     0    0
@@ -25199,8 +25199,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.240.86                   0       0       0       5      0    0
           icmp:host-unreachable        0       0       0       5      0    0
         10.45.241.57                   216     66079   437     0      0    0
-        * icmp:port-unreachable        209     249     8       0      0    0
           icmp:host-unreachable        1       1       0       0      0    0
+        * icmp:port-unreachable        209     249     8       0      0    0
           udp:4500 (ipsec-nat-t)       0       0       21      0      0    0
           udp:6881                     0       20      36      0      0    0
           udp:8999 (bctp)              0       0       362     0      0    0
@@ -25285,8 +25285,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.242.146                  0       0       0       30     0    0
         * icmp:host-unreachable        0       0       0       30     0    0
         10.45.242.161                  143     134     2297    139    0    0
-        * icmp:host-unreachable        5       0       0       139    0    0
         * icmp:port-unreachable        23      41      0       0      0    0
+        * icmp:host-unreachable        5       0       0       139    0    0
         * udp:4500 (ipsec-nat-t)       115     0       4       0      0    0
           udp:6881                     0       1       0       0      0    0
           udp:10611                    0       1       0       0      0    0
@@ -25323,8 +25323,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         10.45.243.69                   0       0       0       66     0    0
         * icmp:host-unreachable        0       0       0       66     0    0
         10.45.243.71                   0       28      0       2      0    0
-          icmp:port-unreachable        0       0       0       1      0    0
           icmp:host-unreachable        0       0       0       1      0    0
+          icmp:port-unreachable        0       0       0       1      0    0
           udp:80 (http)                0       28      0       0      0    0
         10.45.243.109                  0       2008    0       7      0    0
           icmp:host-unreachable        0       0       0       7      0    0
@@ -25631,8 +25631,8 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
         ----                         ---     ---    ---     ---    ---  ---
         icmp:port-unreachable        6632    40795  3539    404    0    0
         icmp:network-unreachable     321     4      0       0      0    0
-        icmp:ttl-zero-during-transit 65      2      66      0      0    0
         icmp:host-unreachable        1171    2575   43      22990  0    0
+        icmp:ttl-zero-during-transit 65      2      66      0      0    0
         ipencap:0                    0       0      0       1      0    0
         udp:53 (domain)              0       403    1       0      0    0
         udp:80 (http)                0       33     0       0      0    0
@@ -43381,8 +43381,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
         10.45.64.50                 0      1      0      0      0    0
           udp:53852                 0      1      0      0      0    0
         10.45.64.99                 7241   58012  6804   0      0    0
-          icmp:port-unreachable     5      46     13     0      0    0
           icmp:host-unreachable     0      1      0      0      0    0
+          icmp:port-unreachable     5      46     13     0      0    0
           udp:1 (tcpmux)            0      1      0      0      0    0
           udp:6881                  2      21     1      0      0    0
           udp:37755                 0      1      0      0      0    0
@@ -43410,8 +43410,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
           udp:61659                 0      1      0      0      0    0
           udp:62904                 0      1      0      0      0    0
         10.45.87.32                 0      303    1      22     0    0
-        * icmp:port-unreachable     0      0      0      20     0    0
           icmp:host-unreachable     0      0      0      2      0    0
+        * icmp:port-unreachable     0      0      0      20     0    0
           udp:49205                 0      0      1      0      0    0
           udp:61141                 0      302    0      0      0    0
           udp:61143                 0      1      0      0      0    0
@@ -43450,8 +43450,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
         10.45.104.84                0      1      0      0      0    0
           udp:55117                 0      1      0      0      0    0
         10.45.108.24                15251  74231  15270  14     0    0
-          icmp:host-unreachable     1      1      0      0      0    0
         * icmp:port-unreachable     17     81     20     14     0    0
+          icmp:host-unreachable     1      1      0      0      0    0
         * udp:6881                  10147  44390  10394  0      0    0
           udp:32923                 0      10     0      0      0    0
           udp:53852                 0      1      0      0      0    0
@@ -43499,8 +43499,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
           udp:53505                 0      1      0      0      0    0
           udp:62904                 0      1      0      0      0    0
         10.45.122.51                18749  79868  19771  4712   0    0
-        * icmp:host-unreachable     0      0      0      4712   0    0
           icmp:port-unreachable     4      4      1      0      0    0
+        * icmp:host-unreachable     0      0      0      4712   0    0
           udp:1404 (igi-lm)         0      20     0      0      0    0
           udp:1422 (autodesk-lm)    0      6      0      0      0    0
           udp:1423 (essbase)        0      4      0      0      0    0
@@ -43558,8 +43558,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
           udp:63078                 0      1      0      0      0    0
           udp:63570                 0      1      0      0      0    0
         10.45.136.199               524    13842  482    0      0    0
-          icmp:port-unreachable     1      3      2      0      0    0
           icmp:host-unreachable     0      3      0      0      0    0
+          icmp:port-unreachable     1      3      2      0      0    0
           udp:1 (tcpmux)            0      1      0      0      0    0
         * udp:42300                 523    13835  480    0      0    0
         10.45.137.29                0      5      0      0      0    0
@@ -43587,8 +43587,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
           udp:2412 (cdn)            0      0      1      0      0    0
         * udp:42900                 4258   19891  3756   0      0    0
         10.45.140.101               0      7      0      32     0    0
-        * icmp:host-unreachable     0      0      0      28     0    0
           icmp:port-unreachable     0      0      0      4      0    0
+        * icmp:host-unreachable     0      0      0      28     0    0
           udp:6881                  0      3      0      0      0    0
           udp:52859                 0      1      0      0      0    0
           udp:56923                 0      1      0      0      0    0
@@ -43628,8 +43628,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
           udp:52859                 0      1      0      0      0    0
           udp:62904                 0      1      0      0      0    0
         10.45.146.66                355    977    239    500    0    0
-          icmp:port-unreachable     0      1      1      0      0    0
         * icmp:host-unreachable     0      0      0      500    0    0
+          icmp:port-unreachable     0      1      1      0      0    0
           udp:49205                 0      1      0      0      0    0
           udp:53852                 0      2      0      0      0    0
           udp:55117                 0      1      0      0      0    0
@@ -43691,8 +43691,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
           udp:61143                 0      1      0      0      0    0
           udp:63369                 0      1      0      0      0    0
         10.45.230.207               5      26     3      30     0    0
-        * icmp:port-unreachable     0      0      0      30     0    0
           icmp:network-unreachable  1      0      0      0      0    0
+        * icmp:port-unreachable     0      0      0      30     0    0
           udp:1 (tcpmux)            0      5      0      0      0    0
           udp:1115 (ardus-trns)     0      3      0      0      0    0
           udp:1116 (ardus-cntl)     0      1      0      0      0    0
@@ -43726,8 +43726,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
         10.45.239.67                0      0      0      10     0    0
           icmp:port-unreachable     0      0      0      10     0    0
         10.45.240.91                1      0      0      4      0    0
-          icmp:host-unreachable     0      0      0      4      0    0
           icmp:network-unreachable  1      0      0      0      0    0
+          icmp:host-unreachable     0      0      0      4      0    0
         10.45.241.57                879    290551 138    666    0    0
         * icmp:port-unreachable     0      0      0      666    0    0
           udp:1 (tcpmux)            0      20     5      0      0    0
@@ -43755,8 +43755,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
         10.45.242.119               1      9      3      0      0    0
           udp:6881                  1      9      3      0      0    0
         10.45.242.134               124    7      0      0      0    0
-        * icmp:port-unreachable     123    0      0      0      0    0
           icmp:network-unreachable  1      0      0      0      0    0
+        * icmp:port-unreachable     123    0      0      0      0    0
           udp:49744                 0      1      0      0      0    0
           udp:53852                 0      1      0      0      0    0
           udp:55509                 0      1      0      0      0    0
@@ -43764,8 +43764,8 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
           udp:56336                 0      1      0      0      0    0
           udp:63369                 0      1      0      0      0    0
         10.45.248.33                0      1      0      0      1    0
-          icmp:echo-request         0      1      0      0      0    0
           icmp:echo-reply           0      0      0      0      1    0
+          icmp:echo-request         0      1      0      0      0    0
         10.45.253.31                0      2      1      1      0    0
           icmp:host-unreachable     0      0      0      1      0    0
           udp:49205                 0      0      1      0      0    0
@@ -43778,11 +43778,11 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
                                   from   from   from   from   from from
         Port                      WAN    WAN    WAN    LAN    LAN  LAN
         ----                      ---    ---    ---    ---    ---  ---
-        icmp:host-unreachable     16     5      0      10120  0    0
+        icmp:echo-reply           0      0      0      0      1    0
         icmp:network-unreachable  6      0      0      0      0    0
+        icmp:host-unreachable     16     5      0      10120  0    0
         icmp:port-unreachable     13566  160    49     3554   0    0
         icmp:echo-request         0      1      0      0      0    0
-        icmp:echo-reply           0      0      0      0      1    0
         pim:0                     0      1      0      0      0    0
         udp:1 (tcpmux)            0      27     5      0      0    0
         udp:1053 (remote-as)      0      3      0      0      0    0

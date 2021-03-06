@@ -1115,10 +1115,10 @@ Non-TCP conntrack-supported protocols initiated from WAN to LAN
                                  from   from   from   from   from from
         Port                     WAN    WAN    WAN    LAN    LAN  LAN
         ----                     ---    ---    ---    ---    ---  ---
+        icmp:port-unreachable    13566  160    49     3554   0    0
         icmp:host-unreachable    16     5      0      10120  0    0
         icmp:echo-reply          0      0      0      0      1    0
         icmp:echo-request        0      1      0      0      0    0
-        icmp:port-unreachable    13566  160    49     3554   0    0
         icmp:network-unreachable 6      0      0      0      0    0
         pim:0                    0      1      0      0      0    0
         udp:1 (tcpmux)           0      27     5      0      0    0

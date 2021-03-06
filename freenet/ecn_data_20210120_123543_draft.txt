@@ -835,10 +835,10 @@ Non-TCP conntrack-supported protocols initiated from LAN to WAN
                                from    from    from    from   from from
         Port                   WAN     WAN     WAN     LAN    LAN  LAN
         ----                   ---     ---     ---     ---    ---  ---
-        icmp:ttl-zero-during.. 65      2       66      0      0    0
         icmp:port-unreachable  6632    40795   3539    404    0    0
-        icmp:network-unreach.. 321     4       0       0      0    0
         icmp:host-unreachable  1171    2575    43      22990  0    0
+        icmp:ttl-zero-during.. 65      2       66      0      0    0
+        icmp:network-unreach.. 321     4       0       0      0    0
         ipencap:0              0       0       0       1      0    0
         udp:53 (domain)        0       403     1       0      0    0
         udp:80 (http)          0       33      0       0      0    0
